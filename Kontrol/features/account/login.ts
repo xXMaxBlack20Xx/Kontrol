@@ -1,0 +1,77 @@
+import type { AccountRepository, SessionRecord } from './registration';
+
+export type LoginInput = {
+  email: string;
+  password: string;
+};
+
+export type SessionRepository = {
+  saveSession(session: SessionRecord): Promise<void>;
+  getActiveSession(): Promise<SessionRecord | null>;
+  clearSession(): Promise<void>;
+};
+
+export type LoginRepository = AccountRepository & SessionRepository;
+
+export type PasswordVerifier = (password: string, passwordHash: string) => Promise<boolean>;
+
+export type LoginErrorCode = 'INVALID_CREDENTIALS' | 'LOGIN_UNAVAILABLE';
+
+export const loginErrorMessages: Record<LoginErrorCode, string> = {
+  INVALID_CREDENTIALS: 'Correo o contrasena incorrectos.',
+  LOGIN_UNAVAILABLE: 'No se pudo iniciar sesion. Intenta nuevamente.',
+};
+
+export class LoginError extends Error {
+  code: LoginErrorCode;
+
+  constructor(code: LoginErrorCode) {
+    super(loginErrorMessages[code]);
+    this.code = code;
+  }
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+export async function loginLocalAccount(
+  input: LoginInput,
+  repository: LoginRepository,
+  passwordVerifier: PasswordVerifier,
+): Promise<SessionRecord> {
+  try {
+    const email = normalizeEmail(input.email);
+    const account = await repository.findByEmail(email);
+
+    if (!account || !(await passwordVerifier(input.password, account.passwordHash))) {
+      throw new LoginError('INVALID_CREDENTIALS');
+    }
+
+    const session: SessionRecord = {
+      accountId: account.id,
+      email: account.email,
+      createdAt: new Date().toISOString(),
+    };
+
+    await repository.saveSession(session);
+
+    return session;
+  } catch (error) {
+    if (error instanceof LoginError) {
+      throw error;
+    }
+
+    throw new LoginError('LOGIN_UNAVAILABLE');
+  }
+}
+
+export async function getActiveLocalSession(
+  repository: SessionRepository,
+): Promise<SessionRecord | null> {
+  return repository.getActiveSession();
+}
+
+export async function clearActiveLocalSession(repository: SessionRepository): Promise<void> {
+  await repository.clearSession();
+}
