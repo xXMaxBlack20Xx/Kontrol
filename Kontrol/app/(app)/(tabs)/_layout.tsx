@@ -1,18 +1,24 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Tabs } from 'expo-router';
 
+import { colors } from '@/components/ui/theme';
+
 export default function AppTabLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#0A84FF',
-        tabBarInactiveTintColor: '#8A8A8E',
+        tabBarActiveTintColor: colors.textPrimary,
+        tabBarInactiveTintColor: colors.textTertiary,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+        },
       }}>
       <Tabs.Screen
         name="habits/index"
         options={{
-          title: 'Habitos',
+          title: 'Hábitos',
           tabBarIcon: ({ color }) => <MaterialIcons color={color} name="check-circle" size={26} />,
         }}
       />
@@ -33,7 +39,7 @@ export default function AppTabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Ajustes',
+          title: 'Configuración',
           tabBarIcon: ({ color }) => <MaterialIcons color={color} name="settings" size={26} />,
         }}
       />

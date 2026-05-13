@@ -1,10 +1,12 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { colors, spacing } from './ui/theme';
+
 export function SessionLoadingScreen() {
   return (
     <View style={styles.container}>
-      <ActivityIndicator color="#0A84FF" />
-      <Text style={styles.text}>Cargando sesion...</Text>
+      <ActivityIndicator color={colors.textPrimary} />
+      <Text style={styles.text}>Cargando sesión...</Text>
     </View>
   );
 }
@@ -12,14 +14,14 @@ export function SessionLoadingScreen() {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    backgroundColor: '#F7F7F8',
+    backgroundColor: colors.background,
     flex: 1,
-    gap: 12,
+    gap: spacing.md,
     justifyContent: 'center',
     padding: 24,
   },
   text: {
-    color: '#6E6E73',
+    color: colors.textSecondary,
     fontSize: 15,
     fontWeight: '600',
   },

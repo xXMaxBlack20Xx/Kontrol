@@ -1,9 +1,15 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { type Href, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 
 import { SessionLoadingScreen } from '@/components/session-loading-screen';
+import { AppHeader } from '@/components/ui/app-header';
+import { DestructiveButton, SecondaryButton } from '@/components/ui/buttons';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { FeedbackMessage } from '@/components/ui/form';
+import { ScreenContainer } from '@/components/ui/screen-container';
+import { colors, spacing } from '@/components/ui/theme';
 import { useAuth } from '@/features/account/auth-context';
 import { editHabit, type HabitRecord } from '@/features/habits/habit';
 import { fileHabitRepository } from '@/features/habits/local-habit-repository';
@@ -64,7 +70,7 @@ export default function RemindersScreen() {
   );
 
   function confirmDeleteReminder(item: ReminderListItem) {
-    Alert.alert('Eliminar recordatorio', 'Confirma para retirar esta notificacion local.', [
+    Alert.alert('Eliminar recordatorio', 'Confirma para retirar esta notificación local.', [
       { style: 'cancel', text: 'Cancelar' },
       {
         onPress: () => handleDeleteReminder(item),
@@ -108,183 +114,121 @@ export default function RemindersScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>Kontrol</Text>
-        <Text style={styles.title}>Recordatorios</Text>
-        <Text style={styles.description}>
-          Revisa las notificaciones locales configuradas para tus habitos diarios.
-        </Text>
-      </View>
+    <ScreenContainer contentStyle={styles.content} edges={['top']}>
+      <AppHeader
+        description="Revisa las notificaciones locales configuradas para tus hábitos diarios."
+        eyebrow="Kontrol"
+        title="Recordatorios"
+      />
 
-      {message ? (
-        <Text style={[styles.feedback, isSuccess ? styles.success : styles.error]}>{message}</Text>
+      {message ? <FeedbackMessage message={message} type={isSuccess ? 'success' : 'error'} /> : null}
+
+      {isLoading ? (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator color={colors.textPrimary} />
+          <Text style={styles.loadingText}>Cargando recordatorios...</Text>
+        </View>
       ) : null}
 
-      {isLoading ? <ActivityIndicator color="#0A84FF" /> : null}
-
       {!isLoading && items.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>Sin recordatorios</Text>
-          <Text style={styles.emptyText}>
-            Crea o edita un habito para agregar una hora de recordatorio local.
-          </Text>
-          <Pressable
-            onPress={() => router.push('/(app)/habits/create' as Href)}
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}>
-            <MaterialIcons color="#0A84FF" name="add-circle-outline" size={20} />
-            <Text style={styles.secondaryButtonText}>Crear habito</Text>
-          </Pressable>
-        </View>
+        <EmptyState
+          action={
+            <SecondaryButton
+              compact
+              fullWidth={false}
+              icon="add-circle-outline"
+              onPress={() => router.push('/(app)/habits/create' as Href)}
+              title="Crear hábito"
+            />
+          }
+          description="Crea o edita un hábito para agregar una hora de recordatorio local."
+          icon="notifications-none"
+          title="Sin recordatorios"
+        />
       ) : null}
 
       {items.map((item) => {
         const habit = item.habit;
+        const isDeleting = deletingHabitId === item.reminder.habitId;
 
         return (
-          <View key={item.reminder.id} style={styles.card}>
-            <Text style={styles.habitName}>{habit?.name ?? 'Habito no disponible'}</Text>
-            <Text style={styles.habitDetail}>Hora: {item.reminder.time}</Text>
-            <Text style={styles.habitDetail}>Notificacion local: {item.reminder.notificationId}</Text>
+          <Card key={item.reminder.id} style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.habitName}>{habit?.name ?? 'Hábito no disponible'}</Text>
+              <Text style={styles.time}>{item.reminder.time}</Text>
+            </View>
+            <Text style={styles.habitDetail}>Notificación local: {item.reminder.notificationId}</Text>
 
             <View style={styles.actions}>
               {habit ? (
-                <Pressable
+                <SecondaryButton
+                  compact
+                  fullWidth={false}
+                  icon="edit"
                   onPress={() => router.push(habitEditHref(habit.id))}
-                  style={styles.secondaryButton}>
-                  <MaterialIcons color="#0A84FF" name="edit" size={20} />
-                  <Text style={styles.secondaryButtonText}>Editar habito</Text>
-                </Pressable>
+                  title="Editar hábito"
+                />
               ) : null}
-              <Pressable
-                disabled={deletingHabitId === item.reminder.habitId}
+              <DestructiveButton
+                compact
+                fullWidth={false}
+                icon="notifications-off"
+                loading={isDeleting}
                 onPress={() => confirmDeleteReminder(item)}
-                style={({ pressed }) => [styles.dangerButton, pressed && styles.buttonPressed]}>
-                <MaterialIcons color="#FFFFFF" name="notifications-off" size={20} />
-                <Text style={styles.dangerButtonText}>
-                  {deletingHabitId === item.reminder.habitId ? 'Eliminando' : 'Eliminar'}
-                </Text>
-              </Pressable>
+                title="Eliminar"
+              />
             </View>
-          </View>
+          </Card>
         );
       })}
-    </ScrollView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    backgroundColor: '#F7F7F8',
-    flex: 1,
-  },
   content: {
-    gap: 16,
-    padding: 24,
+    gap: spacing.lg,
   },
-  header: {
-    gap: 10,
-    marginBottom: 8,
+  loadingRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+    justifyContent: 'center',
+    minHeight: 54,
   },
-  eyebrow: {
-    color: '#6E6E73',
+  loadingText: {
+    color: colors.textSecondary,
     fontSize: 15,
     fontWeight: '600',
   },
-  title: {
-    color: '#111111',
-    fontSize: 34,
-    fontWeight: '700',
-  },
-  description: {
-    color: '#5F6368',
-    fontSize: 17,
-    lineHeight: 24,
-  },
-  feedback: {
-    borderRadius: 14,
-    fontSize: 15,
-    lineHeight: 20,
-    padding: 12,
-  },
-  success: {
-    backgroundColor: '#E8F7EE',
-    color: '#137333',
-  },
-  error: {
-    backgroundColor: '#FDECEC',
-    color: '#B3261E',
-  },
-  emptyState: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    gap: 10,
-    padding: 18,
-  },
-  emptyTitle: {
-    color: '#1D1D1F',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  emptyText: {
-    color: '#6E6E73',
-    fontSize: 15,
-    lineHeight: 21,
-  },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    gap: 6,
-    padding: 16,
+    gap: spacing.md,
+  },
+  cardHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: spacing.md,
+    justifyContent: 'space-between',
   },
   habitName: {
-    color: '#1D1D1F',
+    color: colors.textPrimary,
+    flex: 1,
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
+  },
+  time: {
+    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: '800',
   },
   habitDetail: {
-    color: '#6E6E73',
+    color: colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
   },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 8,
-  },
-  secondaryButton: {
-    alignItems: 'center',
-    borderColor: '#0A84FF',
-    borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    minHeight: 44,
-    paddingHorizontal: 14,
-  },
-  secondaryButtonText: {
-    color: '#0A84FF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  dangerButton: {
-    alignItems: 'center',
-    backgroundColor: '#B3261E',
-    borderRadius: 16,
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    minHeight: 44,
-    paddingHorizontal: 14,
-  },
-  dangerButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  buttonPressed: {
-    opacity: 0.72,
+    gap: spacing.sm,
   },
 });

@@ -1,20 +1,14 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { type Href, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 
 import { SessionLoadingScreen } from '@/components/session-loading-screen';
+import { AppHeader } from '@/components/ui/app-header';
+import { DestructiveButton, PrimaryButton } from '@/components/ui/buttons';
+import { Card } from '@/components/ui/card';
+import { FeedbackMessage, SelectPill, TextInputField } from '@/components/ui/form';
+import { ScreenContainer } from '@/components/ui/screen-container';
+import { colors, spacing } from '@/components/ui/theme';
 import { useAuth } from '@/features/account/auth-context';
 import {
   deleteHabit,
@@ -84,12 +78,12 @@ export default function EditHabitScreen() {
         setEditHabitTarget(selectedHabit.target ?? '');
         setEditHabitReminderTime(storedReminder?.time ?? '');
       } else {
-        setMessage('No se encontro este habito local.');
+        setMessage('No se encontró este hábito local.');
       }
     } catch {
       setHabit(null);
       setReminder(null);
-      setMessage('No se pudo cargar el habito. Intenta nuevamente.');
+      setMessage('No se pudo cargar el hábito. Intenta nuevamente.');
     } finally {
       setIsLoading(false);
     }
@@ -193,7 +187,7 @@ export default function EditHabitScreen() {
       return;
     }
 
-    Alert.alert('Eliminar habito', 'Esta accion retirara el habito de la aplicacion.', [
+    Alert.alert('Eliminar hábito', 'Esta acción retirará el hábito de la aplicación.', [
       { style: 'cancel', text: 'Cancelar' },
       {
         onPress: handleDeleteHabit,
@@ -223,7 +217,7 @@ export default function EditHabitScreen() {
             expoNotificationScheduler,
           );
         } catch {
-          setMessage('El habito fue eliminado, pero no se pudo cancelar su recordatorio local.');
+          setMessage('El hábito fue eliminado, pero no se pudo cancelar su recordatorio local.');
         }
       }
 
@@ -246,246 +240,105 @@ export default function EditHabitScreen() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <MaterialIcons color="#0A84FF" name="arrow-back-ios-new" size={18} />
-            <Text style={styles.backButtonText}>Detalle</Text>
-          </Pressable>
-          <Text style={styles.eyebrow}>Editar habito</Text>
-          <Text style={styles.title}>{habit?.name ?? 'Habito'}</Text>
+    <ScreenContainer contentStyle={styles.content} edges={['top']} keyboardAvoiding>
+      <AppHeader
+        backLabel="Detalle"
+        eyebrow="Editar hábito"
+        onBack={() => router.back()}
+        title={habit?.name ?? 'Hábito'}
+      />
+
+      {isLoading ? (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator color={colors.textPrimary} />
+          <Text style={styles.loadingText}>Cargando hábito...</Text>
         </View>
+      ) : null}
 
-        {isLoading ? <ActivityIndicator color="#0A84FF" /> : null}
+      {message ? <FeedbackMessage message={message} type={isSuccess ? 'success' : 'error'} /> : null}
 
-        {message ? (
-          <Text style={[styles.feedback, isSuccess ? styles.success : styles.error]}>{message}</Text>
-        ) : null}
+      {habit ? (
+        <Card style={styles.form}>
+          <TextInputField
+            label="Nombre"
+            onChangeText={setEditHabitName}
+            placeholder="Leer 30 minutos"
+            value={editHabitName}
+          />
 
-        {habit ? (
-          <View style={styles.form}>
-            <View style={styles.field}>
-              <Text style={styles.label}>Nombre</Text>
-              <TextInput
-                onChangeText={setEditHabitName}
-                placeholder="Leer 30 minutos"
-                placeholderTextColor="#8A8A8E"
-                style={styles.input}
-                value={editHabitName}
-              />
-            </View>
+          <SelectPill
+            label="Diaria"
+            onPress={() => setEditHabitFrequency('daily')}
+            selected={editHabitFrequency === 'daily'}
+          />
 
-            <View style={styles.field}>
-              <Text style={styles.label}>Frecuencia</Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setEditHabitFrequency('daily')}
-                style={[styles.frequencyOption, editHabitFrequency === 'daily' && styles.frequencySelected]}>
-                <Text
-                  style={[
-                    styles.frequencyText,
-                    editHabitFrequency === 'daily' && styles.frequencySelectedText,
-                  ]}>
-                  Diaria
-                </Text>
-              </Pressable>
-            </View>
+          <TextInputField
+            label="Categoría"
+            onChangeText={setEditHabitCategory}
+            placeholder="personal"
+            value={editHabitCategory}
+          />
 
-            <View style={styles.field}>
-              <Text style={styles.label}>Categoria</Text>
-              <TextInput
-                onChangeText={setEditHabitCategory}
-                placeholder="personal"
-                placeholderTextColor="#8A8A8E"
-                style={styles.input}
-                value={editHabitCategory}
-              />
-            </View>
+          <TextInputField
+            label="Meta"
+            onChangeText={setEditHabitTarget}
+            placeholder="leer 10 páginas"
+            value={editHabitTarget}
+          />
 
-            <View style={styles.field}>
-              <Text style={styles.label}>Meta</Text>
-              <TextInput
-                onChangeText={setEditHabitTarget}
-                placeholder="leer 10 paginas"
-                placeholderTextColor="#8A8A8E"
-                style={styles.input}
-                value={editHabitTarget}
-              />
-            </View>
+          <TextInputField
+            inputMode="numeric"
+            label="Recordatorio"
+            onChangeText={setEditHabitReminderTime}
+            placeholder="08:00"
+            value={editHabitReminderTime}
+          />
 
-            <View style={styles.field}>
-              <Text style={styles.label}>Recordatorio</Text>
-              <TextInput
-                inputMode="numeric"
-                onChangeText={setEditHabitReminderTime}
-                placeholder="08:00"
-                placeholderTextColor="#8A8A8E"
-                style={styles.input}
-                value={editHabitReminderTime}
-              />
-            </View>
+          <View style={styles.actions}>
+            <PrimaryButton
+              fullWidth={false}
+              icon="save"
+              loading={isSubmitting}
+              onPress={handleSaveHabitEdit}
+              title="Guardar"
+            />
 
-            <View style={styles.actions}>
-              <Pressable
-                disabled={isSubmitting}
-                onPress={handleSaveHabitEdit}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  (pressed || isSubmitting) && styles.buttonPressed,
-                ]}>
-                {isSubmitting ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <>
-                    <MaterialIcons color="#FFFFFF" name="save" size={20} />
-                    <Text style={styles.primaryButtonText}>Guardar</Text>
-                  </>
-                )}
-              </Pressable>
-
-              <Pressable
-                disabled={isDeleting}
-                onPress={confirmDeleteHabit}
-                style={({ pressed }) => [
-                  styles.dangerButton,
-                  (pressed || isDeleting) && styles.buttonPressed,
-                ]}>
-                <MaterialIcons color="#FFFFFF" name="delete-outline" size={20} />
-                <Text style={styles.primaryButtonText}>{isDeleting ? 'Eliminando' : 'Eliminar'}</Text>
-              </Pressable>
-            </View>
+            <DestructiveButton
+              fullWidth={false}
+              icon="delete-outline"
+              loading={isDeleting}
+              onPress={confirmDeleteHabit}
+              title="Eliminar"
+            />
           </View>
-        ) : null}
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </Card>
+      ) : null}
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    backgroundColor: '#F7F7F8',
-    flex: 1,
-  },
   content: {
-    gap: 16,
-    padding: 24,
+    gap: spacing.lg,
   },
-  header: {
-    gap: 10,
-    marginBottom: 6,
-  },
-  backButton: {
+  loadingRow: {
     alignItems: 'center',
-    alignSelf: 'flex-start',
     flexDirection: 'row',
-    gap: 4,
-    minHeight: 36,
+    gap: spacing.sm,
+    justifyContent: 'center',
+    minHeight: 54,
   },
-  backButtonText: {
-    color: '#0A84FF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  eyebrow: {
-    color: '#6E6E73',
+  loadingText: {
+    color: colors.textSecondary,
     fontSize: 15,
     fontWeight: '600',
-  },
-  title: {
-    color: '#111111',
-    fontSize: 34,
-    fontWeight: '700',
   },
   form: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    gap: 18,
-    padding: 20,
-  },
-  field: {
-    gap: 8,
-  },
-  label: {
-    color: '#1D1D1F',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  input: {
-    backgroundColor: '#F2F2F7',
-    borderColor: '#E5E5EA',
-    borderRadius: 16,
-    borderWidth: 1,
-    color: '#111111',
-    fontSize: 17,
-    minHeight: 52,
-    paddingHorizontal: 16,
-  },
-  frequencyOption: {
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    borderColor: '#0A84FF',
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-  },
-  frequencySelected: {
-    backgroundColor: '#0A84FF',
-  },
-  frequencyText: {
-    color: '#0A84FF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  frequencySelectedText: {
-    color: '#FFFFFF',
-  },
-  feedback: {
-    borderRadius: 14,
-    fontSize: 15,
-    lineHeight: 20,
-    padding: 12,
-  },
-  success: {
-    backgroundColor: '#E8F7EE',
-    color: '#137333',
-  },
-  error: {
-    backgroundColor: '#FDECEC',
-    color: '#B3261E',
+    gap: spacing.lg,
   },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-  },
-  primaryButton: {
-    alignItems: 'center',
-    backgroundColor: '#0A84FF',
-    borderRadius: 16,
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    minHeight: 48,
-    paddingHorizontal: 16,
-  },
-  dangerButton: {
-    alignItems: 'center',
-    backgroundColor: '#B3261E',
-    borderRadius: 16,
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    minHeight: 48,
-    paddingHorizontal: 16,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  buttonPressed: {
-    opacity: 0.72,
+    gap: spacing.sm,
   },
 });

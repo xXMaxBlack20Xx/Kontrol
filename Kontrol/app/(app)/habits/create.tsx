@@ -1,19 +1,14 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { type Href, useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { SessionLoadingScreen } from '@/components/session-loading-screen';
+import { AppHeader } from '@/components/ui/app-header';
+import { PrimaryButton } from '@/components/ui/buttons';
+import { Card } from '@/components/ui/card';
+import { FeedbackMessage, SelectPill, TextInputField } from '@/components/ui/form';
+import { ScreenContainer } from '@/components/ui/screen-container';
+import { spacing } from '@/components/ui/theme';
 import { useAuth } from '@/features/account/auth-context';
 import {
   createHabit,
@@ -99,13 +94,13 @@ export default function CreateHabitScreen() {
           habit = await editHabit(habit, { reminderTime: reminder.time }, fileHabitRepository);
         } catch (error) {
           setIsSuccess(false);
-          setMessage(`Habito creado sin recordatorio. ${getReminderMessage(error)}`);
+          setMessage(`Hábito creado sin recordatorio. ${getReminderMessage(error)}`);
           return;
         }
       }
 
       setIsSuccess(true);
-      setMessage('Habito creado.');
+      setMessage('Hábito creado.');
       router.replace('/(app)/(tabs)/habits' as Href);
     } catch (error) {
       setIsSuccess(false);
@@ -125,219 +120,60 @@ export default function CreateHabitScreen() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <MaterialIcons color="#0A84FF" name="arrow-back-ios-new" size={18} />
-            <Text style={styles.backButtonText}>Habitos</Text>
-          </Pressable>
-          <Text style={styles.eyebrow}>Nuevo habito</Text>
-          <Text style={styles.title}>Crear habito</Text>
-          <Text style={styles.description}>Define una accion diaria sencilla para empezar a medirla.</Text>
-        </View>
+    <ScreenContainer contentStyle={styles.content} edges={['top']} keyboardAvoiding>
+      <AppHeader
+        backLabel="Hábitos"
+        description="Define una acción diaria sencilla para empezar a medirla."
+        eyebrow="Nuevo hábito"
+        onBack={() => router.back()}
+        title="Crear hábito"
+      />
 
-        <View style={styles.form}>
-          <View style={styles.field}>
-            <Text style={styles.label}>Nombre</Text>
-            <TextInput
-              onChangeText={setHabitName}
-              placeholder="Leer"
-              placeholderTextColor="#8A8A8E"
-              style={styles.input}
-              value={habitName}
-            />
-          </View>
+      <Card style={styles.form}>
+        <TextInputField label="Nombre" onChangeText={setHabitName} placeholder="Leer" value={habitName} />
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Frecuencia</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setHabitFrequency('daily')}
-              style={[styles.frequencyOption, habitFrequency === 'daily' && styles.frequencySelected]}>
-              <Text
-                style={[
-                  styles.frequencyText,
-                  habitFrequency === 'daily' && styles.frequencySelectedText,
-                ]}>
-                Diaria
-              </Text>
-            </Pressable>
-          </View>
+        <SelectPill label="Diaria" onPress={() => setHabitFrequency('daily')} selected={habitFrequency === 'daily'} />
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Categoria opcional</Text>
-            <TextInput
-              onChangeText={setHabitCategory}
-              placeholder="estudio"
-              placeholderTextColor="#8A8A8E"
-              style={styles.input}
-              value={habitCategory}
-            />
-          </View>
+        <TextInputField
+          label="Categoría opcional"
+          onChangeText={setHabitCategory}
+          placeholder="estudio"
+          value={habitCategory}
+        />
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Meta opcional</Text>
-            <TextInput
-              onChangeText={setHabitTarget}
-              placeholder="leer 10 paginas"
-              placeholderTextColor="#8A8A8E"
-              style={styles.input}
-              value={habitTarget}
-            />
-          </View>
+        <TextInputField
+          label="Meta opcional"
+          onChangeText={setHabitTarget}
+          placeholder="leer 10 páginas"
+          value={habitTarget}
+        />
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Recordatorio inicial opcional</Text>
-            <TextInput
-              inputMode="numeric"
-              onChangeText={setHabitReminderTime}
-              placeholder="08:00"
-              placeholderTextColor="#8A8A8E"
-              style={styles.input}
-              value={habitReminderTime}
-            />
-          </View>
+        <TextInputField
+          inputMode="numeric"
+          label="Recordatorio inicial opcional"
+          onChangeText={setHabitReminderTime}
+          placeholder="08:00"
+          value={habitReminderTime}
+        />
 
-          {message ? (
-            <Text style={[styles.feedback, isSuccess ? styles.success : styles.error]}>{message}</Text>
-          ) : null}
+        {message ? <FeedbackMessage message={message} type={isSuccess ? 'success' : 'error'} /> : null}
 
-          <Pressable
-            disabled={isSubmitting}
-            onPress={handleCreateHabit}
-            style={({ pressed }) => [
-              styles.button,
-              (pressed || isSubmitting) && styles.buttonPressed,
-            ]}>
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                <MaterialIcons color="#FFFFFF" name="save" size={20} />
-                <Text style={styles.buttonText}>Guardar habito</Text>
-              </>
-            )}
-          </Pressable>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <PrimaryButton
+          icon="save"
+          loading={isSubmitting}
+          onPress={handleCreateHabit}
+          title="Guardar hábito"
+        />
+      </Card>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    backgroundColor: '#F7F7F8',
-    flex: 1,
-  },
   content: {
-    gap: 18,
-    padding: 24,
-  },
-  header: {
-    gap: 10,
-    marginBottom: 8,
-  },
-  backButton: {
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    gap: 4,
-    minHeight: 36,
-  },
-  backButtonText: {
-    color: '#0A84FF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  eyebrow: {
-    color: '#6E6E73',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  title: {
-    color: '#111111',
-    fontSize: 34,
-    fontWeight: '700',
-  },
-  description: {
-    color: '#5F6368',
-    fontSize: 17,
-    lineHeight: 24,
+    gap: spacing.lg,
   },
   form: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    gap: 18,
-    padding: 20,
-  },
-  field: {
-    gap: 8,
-  },
-  label: {
-    color: '#1D1D1F',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  input: {
-    backgroundColor: '#F2F2F7',
-    borderColor: '#E5E5EA',
-    borderRadius: 16,
-    borderWidth: 1,
-    color: '#111111',
-    fontSize: 17,
-    minHeight: 52,
-    paddingHorizontal: 16,
-  },
-  frequencyOption: {
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    borderColor: '#0A84FF',
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-  },
-  frequencySelected: {
-    backgroundColor: '#0A84FF',
-  },
-  frequencyText: {
-    color: '#0A84FF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  frequencySelectedText: {
-    color: '#FFFFFF',
-  },
-  feedback: {
-    borderRadius: 14,
-    fontSize: 15,
-    lineHeight: 20,
-    padding: 12,
-  },
-  success: {
-    backgroundColor: '#E8F7EE',
-    color: '#137333',
-  },
-  error: {
-    backgroundColor: '#FDECEC',
-    color: '#B3261E',
-  },
-  button: {
-    alignItems: 'center',
-    backgroundColor: '#0A84FF',
-    borderRadius: 18,
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    minHeight: 54,
-  },
-  buttonPressed: {
-    opacity: 0.72,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
+    gap: spacing.lg,
   },
 });

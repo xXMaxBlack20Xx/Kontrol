@@ -1,18 +1,11 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View } from 'react-native';
 
-const logo = require('@/assets/logo/Kontrol_logo_icon_app_v2.png');
-
-const colors = {
-  background: '#F7F7F8',
-  card: '#FFFFFF',
-  ink: '#111111',
-  muted: '#6E6E73',
-  border: '#E5E5EA',
-  field: '#F4F4F5',
-  black: '#000000',
-};
+import { AppHeader } from '@/components/ui/app-header';
+import { BrandMark } from '@/components/ui/brand-mark';
+import { Card } from '@/components/ui/card';
+import { ScreenContainer } from '@/components/ui/screen-container';
+import { colors, radius, spacing } from '@/components/ui/theme';
 
 const sections = [
   {
@@ -43,109 +36,48 @@ const sections = [
 
 export default function PrivacyScreen() {
   return (
-    <SafeAreaView style={styles.screen} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.brandRow}>
-          <Image source={logo} style={styles.logo} />
-          <View>
-            <Text style={styles.brandName}>Kontrol</Text>
-            <Text style={styles.brandTagline}>Privacidad local</Text>
-          </View>
-        </View>
+    <ScreenContainer contentStyle={styles.content} edges={['bottom']}>
+      <BrandMark tagline="Privacidad local" />
 
-        <View style={styles.header}>
-          <Text style={styles.title}>Aviso de privacidad</Text>
-          <Text style={styles.description}>
-            Kontrol funciona localmente en este MVP. No hay backend, sincronización en la nube ni
-            funciones sociales.
-          </Text>
-        </View>
+      <AppHeader
+        description="Kontrol funciona localmente en este MVP. No hay backend, sincronización en la nube ni funciones sociales."
+        title="Aviso de privacidad"
+      />
 
-        <View style={styles.sectionList}>
-          {sections.map((section) => (
-            <View key={section.title} style={styles.card}>
-              <View style={styles.iconFrame}>
-                <MaterialIcons color={colors.ink} name={section.icon} size={22} />
-              </View>
-              <View style={styles.cardText}>
-                <Text style={styles.sectionTitle}>{section.title}</Text>
-                <Text style={styles.body}>{section.body}</Text>
-              </View>
+      <View style={styles.sectionList}>
+        {sections.map((section) => (
+          <Card key={section.title} style={styles.card}>
+            <View style={styles.iconFrame}>
+              <MaterialIcons color={colors.textPrimary} name={section.icon} size={22} />
             </View>
-          ))}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+            <View style={styles.cardText}>
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+              <Text style={styles.body}>{section.body}</Text>
+            </View>
+          </Card>
+        ))}
+      </View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    backgroundColor: colors.background,
-    flex: 1,
-  },
   content: {
-    gap: 24,
-    paddingBottom: 32,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  brandRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12,
-  },
-  logo: {
-    borderRadius: 12,
-    height: 42,
-    width: 42,
-  },
-  brandName: {
-    color: colors.ink,
-    fontSize: 22,
-    fontWeight: '800',
-  },
-  brandTagline: {
-    color: colors.muted,
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  header: {
-    gap: 12,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 38,
-    fontWeight: '800',
-    lineHeight: 43,
-  },
-  description: {
-    color: colors.muted,
-    fontSize: 17,
-    lineHeight: 25,
+    gap: spacing.xxl,
+    paddingTop: spacing.xl,
   },
   sectionList: {
     gap: 10,
   },
   card: {
     alignItems: 'flex-start',
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderRadius: 22,
-    borderWidth: 1,
     flexDirection: 'row',
     gap: 14,
-    padding: 16,
-    shadowColor: colors.black,
-    shadowOffset: { height: 10, width: 0 },
-    shadowOpacity: 0.03,
-    shadowRadius: 18,
   },
   iconFrame: {
     alignItems: 'center',
-    backgroundColor: colors.field,
-    borderRadius: 14,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.md,
     height: 42,
     justifyContent: 'center',
     width: 42,
@@ -155,12 +87,12 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   sectionTitle: {
-    color: colors.ink,
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '800',
   },
   body: {
-    color: colors.muted,
+    color: colors.textSecondary,
     fontSize: 15,
     lineHeight: 22,
   },

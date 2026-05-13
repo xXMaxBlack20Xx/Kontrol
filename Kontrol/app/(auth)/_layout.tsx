@@ -1,6 +1,7 @@
 import { Redirect, Stack, type Href, usePathname } from 'expo-router';
 
 import { SessionLoadingScreen } from '@/components/session-loading-screen';
+import { colors } from '@/components/ui/theme';
 import { useAuth } from '@/features/account/auth-context';
 
 export default function AuthLayout() {
@@ -24,6 +25,8 @@ export default function AuthLayout() {
         name="privacy"
         options={{
           headerBackTitle: 'Atrás',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.textPrimary,
           headerShadowVisible: false,
           title: 'Aviso de privacidad',
         }}

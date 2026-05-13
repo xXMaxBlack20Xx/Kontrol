@@ -1,9 +1,15 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { SessionLoadingScreen } from '@/components/session-loading-screen';
+import { AppHeader } from '@/components/ui/app-header';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { FeedbackMessage } from '@/components/ui/form';
+import { ScreenContainer } from '@/components/ui/screen-container';
+import { colors, radius, spacing } from '@/components/ui/theme';
 import { useAuth } from '@/features/account/auth-context';
 import {
   buildHabitDetailSummary,
@@ -58,13 +64,13 @@ export default function HabitDetailScreen() {
       setReminder(storedReminder);
 
       if (!detail) {
-        setMessage('El habito ya no esta disponible. Regresa a la lista principal.');
+        setMessage('El hábito ya no está disponible. Regresa a la lista principal.');
       }
     } catch {
       setHabit(null);
       setHabitDetail(null);
       setReminder(null);
-      setMessage('No se pudo abrir el detalle del habito. Intenta nuevamente.');
+      setMessage('No se pudo abrir el detalle del hábito. Intenta nuevamente.');
     } finally {
       setIsLoading(false);
     }
@@ -93,8 +99,8 @@ export default function HabitDetailScreen() {
       setIsSuccess(true);
       setMessage(
         result.didCreate
-          ? `Cumplimiento registrado. Racha actual: ${result.currentStreak} dia(s).`
-          : 'Este habito ya estaba completado hoy.',
+          ? `Cumplimiento registrado. Racha actual: ${result.currentStreak} día(s).`
+          : 'Este hábito ya estaba completado hoy.',
       );
     } catch (error) {
       setIsSuccess(false);
@@ -114,61 +120,70 @@ export default function HabitDetailScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <MaterialIcons color="#0A84FF" name="arrow-back-ios-new" size={18} />
-          <Text style={styles.backButtonText}>Habitos</Text>
-        </Pressable>
-        <Text style={styles.eyebrow}>Detalle del habito</Text>
-        <Text style={styles.title}>{habitDetail?.habit.name ?? 'Habito'}</Text>
-      </View>
+    <ScreenContainer contentStyle={styles.content} edges={['top']}>
+      <AppHeader
+        backLabel="Hábitos"
+        eyebrow="Detalle del hábito"
+        onBack={() => router.back()}
+        title={habitDetail?.habit.name ?? 'Hábito'}
+      />
 
-      {message ? (
-        <Text style={[styles.feedback, isSuccess ? styles.success : styles.error]}>{message}</Text>
+      {message ? <FeedbackMessage message={message} type={isSuccess ? 'success' : 'error'} /> : null}
+
+      {isLoading ? (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator color={colors.textPrimary} />
+          <Text style={styles.loadingText}>Cargando detalle...</Text>
+        </View>
       ) : null}
 
-      {isLoading ? <ActivityIndicator color="#0A84FF" /> : null}
-
       {habitDetail ? (
-        <View style={styles.card}>
-          <Text style={styles.habitDetail}>Frecuencia: diaria</Text>
-          {habitDetail.habit.category ? (
-            <Text style={styles.habitDetail}>Categoria: {habitDetail.habit.category}</Text>
-          ) : null}
-          {habitDetail.habit.target ? (
-            <Text style={styles.habitDetail}>Meta: {habitDetail.habit.target}</Text>
-          ) : null}
-          {reminder?.time ? <Text style={styles.habitDetail}>Recordatorio: {reminder.time}</Text> : null}
-          <Text style={styles.habitDetail}>
-            Estado de hoy: {habitDetail.completedToday ? 'completado' : 'pendiente'}
-          </Text>
-          <Text style={styles.habitDetail}>Racha actual: {habitDetail.currentStreak} dia(s)</Text>
+        <Card style={styles.card}>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Estado de hoy</Text>
+            <View style={styles.statusPill}>
+              <Text style={styles.statusText}>
+                {habitDetail.completedToday ? 'Completado' : 'Pendiente'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.detailList}>
+            <Text style={styles.habitDetail}>Frecuencia: diaria</Text>
+            {habitDetail.habit.category ? (
+              <Text style={styles.habitDetail}>Categoría: {habitDetail.habit.category}</Text>
+            ) : null}
+            {habitDetail.habit.target ? (
+              <Text style={styles.habitDetail}>Meta: {habitDetail.habit.target}</Text>
+            ) : null}
+            {reminder?.time ? <Text style={styles.habitDetail}>Recordatorio: {reminder.time}</Text> : null}
+            <Text style={styles.habitDetail}>Racha actual: {habitDetail.currentStreak} día(s)</Text>
+          </View>
 
           <View style={styles.actions}>
-            <Pressable
-              disabled={habitDetail.completedToday || isCompleting}
-              onPress={handleCompleteHabit}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                habitDetail.completedToday && styles.completeButtonDone,
-                (pressed || isCompleting) && styles.buttonPressed,
-              ]}>
-              <MaterialIcons color="#FFFFFF" name={habitDetail.completedToday ? 'done' : 'check'} size={20} />
-              <Text style={styles.primaryButtonText}>
-                {habitDetail.completedToday ? 'Completado' : 'Completar hoy'}
-              </Text>
-            </Pressable>
-            <Pressable
+            {habitDetail.completedToday ? (
+              <SecondaryButton compact disabled fullWidth={false} icon="done" title="Completado" />
+            ) : (
+              <PrimaryButton
+                compact
+                fullWidth={false}
+                icon="check"
+                loading={isCompleting}
+                onPress={handleCompleteHabit}
+                title="Completar hoy"
+              />
+            )}
+            <SecondaryButton
+              compact
+              fullWidth={false}
+              icon="edit"
               onPress={() => router.push(habitEditHref(habitDetail.habit.id))}
-              style={styles.secondaryButton}>
-              <MaterialIcons color="#0A84FF" name="edit" size={20} />
-              <Text style={styles.secondaryButtonText}>Editar</Text>
-            </Pressable>
+              title="Editar"
+            />
           </View>
 
           <View style={styles.historyBlock}>
-            <Text style={styles.historyTitle}>Historial basico</Text>
+            <Text style={styles.historyTitle}>Historial básico</Text>
             {habitDetail.hasEnoughHistory ? (
               habitDetail.historyDates.map((completedOn) => (
                 <Text key={completedOn} style={styles.historyItem}>
@@ -176,137 +191,96 @@ export default function HabitDetailScreen() {
                 </Text>
               ))
             ) : (
-              <Text style={styles.historyEmpty}>Todavia no hay historial suficiente para este habito.</Text>
+              <Text style={styles.historyEmpty}>Todavía no hay historial suficiente para este hábito.</Text>
             )}
           </View>
-        </View>
+        </Card>
       ) : null}
-    </ScrollView>
+
+      {!isLoading && !habitDetail ? (
+        <EmptyState
+          description="No se encontraron datos válidos para este hábito. Vuelve a la lista para continuar."
+          icon="error-outline"
+          title="Hábito no disponible"
+        />
+      ) : null}
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    backgroundColor: '#F7F7F8',
-    flex: 1,
-  },
   content: {
-    gap: 16,
-    padding: 24,
+    gap: spacing.lg,
   },
-  header: {
-    gap: 10,
-    marginBottom: 6,
-  },
-  backButton: {
+  loadingRow: {
     alignItems: 'center',
-    alignSelf: 'flex-start',
     flexDirection: 'row',
-    gap: 4,
-    minHeight: 36,
+    gap: spacing.sm,
+    justifyContent: 'center',
+    minHeight: 54,
   },
-  backButtonText: {
-    color: '#0A84FF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  eyebrow: {
-    color: '#6E6E73',
+  loadingText: {
+    color: colors.textSecondary,
     fontSize: 15,
     fontWeight: '600',
   },
-  title: {
-    color: '#111111',
-    fontSize: 34,
+  card: {
+    gap: spacing.lg,
+  },
+  statusRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statusLabel: {
+    color: colors.textSecondary,
+    fontSize: 15,
     fontWeight: '700',
   },
-  feedback: {
-    borderRadius: 14,
-    fontSize: 15,
-    lineHeight: 20,
-    padding: 12,
+  statusPill: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 7,
   },
-  success: {
-    backgroundColor: '#E8F7EE',
-    color: '#137333',
+  statusText: {
+    color: colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '800',
   },
-  error: {
-    backgroundColor: '#FDECEC',
-    color: '#B3261E',
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    gap: 8,
-    padding: 18,
+  detailList: {
+    gap: 5,
   },
   habitDetail: {
-    color: '#6E6E73',
+    color: colors.textSecondary,
     fontSize: 15,
     lineHeight: 22,
   },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 10,
-  },
-  primaryButton: {
-    alignItems: 'center',
-    backgroundColor: '#0A84FF',
-    borderRadius: 16,
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    minHeight: 48,
-    paddingHorizontal: 16,
-  },
-  completeButtonDone: {
-    backgroundColor: '#34C759',
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  secondaryButton: {
-    alignItems: 'center',
-    borderColor: '#0A84FF',
-    borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    minHeight: 48,
-    paddingHorizontal: 16,
-  },
-  secondaryButtonText: {
-    color: '#0A84FF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  buttonPressed: {
-    opacity: 0.72,
+    gap: spacing.sm,
   },
   historyBlock: {
-    borderTopColor: '#E5E5EA',
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     gap: 6,
-    marginTop: 12,
-    paddingTop: 12,
+    paddingTop: spacing.md,
   },
   historyTitle: {
-    color: '#1D1D1F',
+    color: colors.textPrimary,
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   historyItem: {
-    color: '#3A3A3C',
+    color: colors.textPrimary,
     fontSize: 14,
     lineHeight: 20,
   },
   historyEmpty: {
-    color: '#6E6E73',
+    color: colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
   },

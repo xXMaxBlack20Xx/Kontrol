@@ -33,8 +33,8 @@ export type RegistrationErrorCode =
   | 'REGISTRATION_UNAVAILABLE';
 
 export const registrationErrorMessages: Record<RegistrationErrorCode, string> = {
-  INVALID_EMAIL: 'Ingresa un correo electronico valido.',
-  SHORT_PASSWORD: 'La contrasena debe tener al menos 8 caracteres.',
+  INVALID_EMAIL: 'Ingresa un correo electrónico válido.',
+  SHORT_PASSWORD: 'La contraseña debe tener al menos 8 caracteres.',
   PRIVACY_NOTICE_REQUIRED: 'Acepta el aviso de privacidad para continuar.',
   DUPLICATE_EMAIL: 'Ya existe una cuenta local con ese correo.',
   REGISTRATION_UNAVAILABLE: 'No se pudo completar el registro. Intenta nuevamente.',

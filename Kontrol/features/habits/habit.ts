@@ -41,9 +41,9 @@ export type CreateHabitErrorCode =
   | 'HABIT_CREATION_UNAVAILABLE';
 
 export const createHabitErrorMessages: Record<CreateHabitErrorCode, string> = {
-  NAME_REQUIRED: 'Ingresa un nombre para el habito.',
-  FREQUENCY_REQUIRED: 'Selecciona una frecuencia valida.',
-  HABIT_CREATION_UNAVAILABLE: 'No se pudo crear el habito. Intenta nuevamente.',
+  NAME_REQUIRED: 'Ingresa un nombre para el hábito.',
+  FREQUENCY_REQUIRED: 'Selecciona una frecuencia válida.',
+  HABIT_CREATION_UNAVAILABLE: 'No se pudo crear el hábito. Intenta nuevamente.',
 };
 
 export class CreateHabitError extends Error {
@@ -58,9 +58,9 @@ export class CreateHabitError extends Error {
 export type EditHabitErrorCode = 'NAME_REQUIRED' | 'FREQUENCY_REQUIRED' | 'HABIT_EDIT_UNAVAILABLE';
 
 export const editHabitErrorMessages: Record<EditHabitErrorCode, string> = {
-  NAME_REQUIRED: 'Ingresa un nombre para el habito.',
-  FREQUENCY_REQUIRED: 'Selecciona una frecuencia valida.',
-  HABIT_EDIT_UNAVAILABLE: 'No se pudo guardar la edicion. Intenta nuevamente.',
+  NAME_REQUIRED: 'Ingresa un nombre para el hábito.',
+  FREQUENCY_REQUIRED: 'Selecciona una frecuencia válida.',
+  HABIT_EDIT_UNAVAILABLE: 'No se pudo guardar la edición. Intenta nuevamente.',
 };
 
 export class EditHabitError extends Error {
@@ -75,9 +75,9 @@ export class EditHabitError extends Error {
 export type DeleteHabitErrorCode = 'CONFIRMATION_REQUIRED' | 'HABIT_NOT_FOUND' | 'HABIT_DELETE_UNAVAILABLE';
 
 export const deleteHabitErrorMessages: Record<DeleteHabitErrorCode, string> = {
-  CONFIRMATION_REQUIRED: 'Confirma la eliminacion para continuar.',
-  HABIT_NOT_FOUND: 'No se pudo encontrar el habito para eliminarlo.',
-  HABIT_DELETE_UNAVAILABLE: 'No se pudo eliminar el habito. Intenta nuevamente.',
+  CONFIRMATION_REQUIRED: 'Confirma la eliminación para continuar.',
+  HABIT_NOT_FOUND: 'No se pudo encontrar el hábito para eliminarlo.',
+  HABIT_DELETE_UNAVAILABLE: 'No se pudo eliminar el hábito. Intenta nuevamente.',
 };
 
 export class DeleteHabitError extends Error {

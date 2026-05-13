@@ -46,14 +46,14 @@ export type ReminderErrorCode =
   | 'REMINDER_SAVE_UNAVAILABLE';
 
 export const reminderErrorMessages: Record<ReminderErrorCode, string> = {
-  HABIT_REQUIRED: 'Selecciona un habito para configurar el recordatorio.',
+  HABIT_REQUIRED: 'Selecciona un hábito para configurar el recordatorio.',
   TIME_REQUIRED: 'Selecciona una hora para el recordatorio.',
-  TIME_INVALID: 'Ingresa una hora valida en formato HH:MM.',
-  NOTIFICATION_PERMISSION_REQUIRED: 'Activa los permisos de notificacion para programar el recordatorio.',
+  TIME_INVALID: 'Ingresa una hora válida en formato HH:MM.',
+  NOTIFICATION_PERMISSION_REQUIRED: 'Activa los permisos de notificación para programar el recordatorio.',
   NOTIFICATIONS_UNAVAILABLE:
-    'Los recordatorios no estan disponibles en Expo Go para Android. Usa una development build para probarlos.',
-  CONFIRMATION_REQUIRED: 'Confirma la eliminacion del recordatorio para continuar.',
-  REMINDER_NOT_FOUND: 'No se encontro un recordatorio para este habito.',
+    'Los recordatorios no están disponibles en Expo Go para Android. Usa una development build para probarlos.',
+  CONFIRMATION_REQUIRED: 'Confirma la eliminación del recordatorio para continuar.',
+  REMINDER_NOT_FOUND: 'No se encontró un recordatorio para este hábito.',
   REMINDER_SAVE_UNAVAILABLE: 'No se pudo guardar el recordatorio. Intenta nuevamente.',
 };
 
@@ -136,7 +136,7 @@ export async function saveHabitReminder(
     }
 
     const notificationId = await scheduler.scheduleDailyReminder({
-      habitName: input.habitName.trim() || 'tu habito',
+      habitName: input.habitName.trim() || 'tu hábito',
       time,
     });
     const now = new Date().toISOString();

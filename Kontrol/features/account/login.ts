@@ -18,8 +18,8 @@ export type PasswordVerifier = (password: string, passwordHash: string) => Promi
 export type LoginErrorCode = 'INVALID_CREDENTIALS' | 'LOGIN_UNAVAILABLE';
 
 export const loginErrorMessages: Record<LoginErrorCode, string> = {
-  INVALID_CREDENTIALS: 'Correo o contrasena incorrectos.',
-  LOGIN_UNAVAILABLE: 'No se pudo iniciar sesion. Intenta nuevamente.',
+  INVALID_CREDENTIALS: 'Correo o contraseña incorrectos.',
+  LOGIN_UNAVAILABLE: 'No se pudo iniciar sesión. Intenta nuevamente.',
 };
 
 export class LoginError extends Error {

@@ -1,17 +1,15 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { type Href, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 
+import { HabitCard } from '@/components/habit-card';
 import { SessionLoadingScreen } from '@/components/session-loading-screen';
+import { AppHeader } from '@/components/ui/app-header';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
+import { EmptyState } from '@/components/ui/empty-state';
+import { FeedbackMessage } from '@/components/ui/form';
+import { ScreenContainer } from '@/components/ui/screen-container';
+import { colors, spacing } from '@/components/ui/theme';
 import { useAuth } from '@/features/account/auth-context';
 import {
   CompleteHabitError,
@@ -73,7 +71,7 @@ export default function HabitsScreen() {
       setCompletionByHabit({});
       setReminderByHabit({});
       setIsSuccess(false);
-      setMessage('No se pudieron cargar tus habitos locales. Intenta nuevamente.');
+      setMessage('No se pudieron cargar tus hábitos locales. Intenta nuevamente.');
     } finally {
       setIsLoading(false);
     }
@@ -103,8 +101,8 @@ export default function HabitsScreen() {
       setIsSuccess(true);
       setMessage(
         result.didCreate
-          ? `Cumplimiento registrado. Racha actual: ${result.currentStreak} dia(s).`
-          : 'Este habito ya estaba completado hoy.',
+          ? `Cumplimiento registrado. Racha actual: ${result.currentStreak} día(s).`
+          : 'Este hábito ya estaba completado hoy.',
       );
     } catch (error) {
       setIsSuccess(false);
@@ -120,7 +118,7 @@ export default function HabitsScreen() {
   }
 
   function confirmDeleteHabit(habit: HabitRecord) {
-    Alert.alert('Eliminar habito', 'Esta accion retirara el habito de la aplicacion.', [
+    Alert.alert('Eliminar hábito', 'Esta acción retirará el hábito de la aplicación.', [
       { style: 'cancel', text: 'Cancelar' },
       {
         onPress: () => handleDeleteHabit(habit),
@@ -148,7 +146,7 @@ export default function HabitsScreen() {
             expoNotificationScheduler,
           );
         } catch {
-          reminderWarning = 'El habito fue eliminado, pero no se pudo cancelar su recordatorio local.';
+          reminderWarning = 'El hábito fue eliminado, pero no se pudo cancelar su recordatorio local.';
         }
       }
 
@@ -166,7 +164,7 @@ export default function HabitsScreen() {
         return updatedReminders;
       });
       setIsSuccess(!reminderWarning);
-      setMessage(reminderWarning ?? 'Habito eliminado.');
+      setMessage(reminderWarning ?? 'Hábito eliminado.');
     } catch (error) {
       setIsSuccess(false);
 
@@ -215,7 +213,7 @@ export default function HabitsScreen() {
   }
 
   function confirmDeleteReminder(habit: HabitRecord) {
-    Alert.alert('Eliminar recordatorio', 'Confirma para retirar la notificacion local de este habito.', [
+    Alert.alert('Eliminar recordatorio', 'Confirma para retirar la notificación local de este hábito.', [
       { style: 'cancel', text: 'Cancelar' },
       {
         onPress: () => handleDeleteReminder(habit),
@@ -230,39 +228,44 @@ export default function HabitsScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>Kontrol</Text>
-        <Text style={styles.title}>Habitos</Text>
-        <Text style={styles.description}>
-          Sesion activa para {user.email}. Registra avances diarios desde tu almacenamiento local.
-        </Text>
-      </View>
+    <ScreenContainer contentStyle={styles.content} edges={['top']}>
+      <AppHeader
+        description={`Sesión activa para ${user.email}. Registra avances diarios desde tu almacenamiento local.`}
+        eyebrow="Kontrol"
+        title="Hábitos"
+      />
 
-      <Pressable
+      <PrimaryButton
+        fullWidth={false}
+        icon="add"
         onPress={() => router.push('/(app)/habits/create' as Href)}
-        style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}>
-        <MaterialIcons color="#FFFFFF" name="add" size={20} />
-        <Text style={styles.primaryButtonText}>Crear habito</Text>
-      </Pressable>
+        title="Crear hábito"
+      />
 
-      {message ? (
-        <Text style={[styles.feedback, isSuccess ? styles.success : styles.error]}>{message}</Text>
+      {message ? <FeedbackMessage message={message} type={isSuccess ? 'success' : 'error'} /> : null}
+
+      {isLoading ? (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator color={colors.textPrimary} />
+          <Text style={styles.loadingText}>Cargando hábitos...</Text>
+        </View>
       ) : null}
 
-      {isLoading ? <ActivityIndicator color="#0A84FF" /> : null}
-
       {!isLoading && habits.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>Aun no tienes habitos</Text>
-          <Text style={styles.emptyText}>Crea tu primer habito para iniciar tu registro diario.</Text>
-          <Pressable
-            onPress={() => router.push('/(app)/habits/create' as Href)}
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}>
-            <MaterialIcons color="#0A84FF" name="add-circle-outline" size={20} />
-            <Text style={styles.secondaryButtonText}>Crear primero</Text>
-          </Pressable>
-        </View>
+        <EmptyState
+          action={
+            <SecondaryButton
+              compact
+              fullWidth={false}
+              icon="add-circle-outline"
+              onPress={() => router.push('/(app)/habits/create' as Href)}
+              title="Crear primero"
+            />
+          }
+          description="Crea tu primer hábito para iniciar tu registro diario."
+          icon="playlist-add"
+          title="Aún no tienes hábitos"
+        />
       ) : null}
 
       {habits.map((habit) => {
@@ -272,233 +275,88 @@ export default function HabitsScreen() {
         };
         const isCompletedToday = completionSummary.completedToday;
         const reminderTime = reminderByHabit[habit.id]?.time;
+        const isCompleting = completingHabitId === habit.id;
 
         return (
-          <View key={habit.id} style={[styles.habitCard, isCompletedToday && styles.habitCardCompleted]}>
-            <Text style={styles.habitName}>{habit.name}</Text>
-            <Text style={styles.habitDetail}>Frecuencia: diaria</Text>
-            <Text style={styles.habitDetail}>Racha actual: {completionSummary.currentStreak} dia(s)</Text>
-            <Text style={[styles.completionStatus, isCompletedToday && styles.completionStatusDone]}>
-              {isCompletedToday ? 'Completado hoy' : 'Pendiente hoy'}
-            </Text>
-            {habit.category ? <Text style={styles.habitDetail}>Categoria: {habit.category}</Text> : null}
-            {habit.target ? <Text style={styles.habitDetail}>Meta: {habit.target}</Text> : null}
-            {reminderTime ? <Text style={styles.habitDetail}>Recordatorio: {reminderTime}</Text> : null}
-
-            <View style={styles.cardActions}>
-              <Pressable
-                disabled={isCompletedToday || completingHabitId === habit.id}
-                onPress={() => handleCompleteHabit(habit)}
-                style={({ pressed }) => [
-                  styles.completeButton,
-                  isCompletedToday && styles.completeButtonDone,
-                  (pressed || completingHabitId === habit.id) && styles.buttonPressed,
-                ]}>
-                <MaterialIcons color="#FFFFFF" name={isCompletedToday ? 'done' : 'check'} size={18} />
-                <Text style={styles.completeButtonText}>{isCompletedToday ? 'Completado' : 'Completar'}</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => router.push(habitDetailHref(habit.id))}
-                style={styles.linkButton}>
-                <Text style={styles.detailLinkText}>Detalle</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => router.push(habitEditHref(habit.id))}
-                style={styles.linkButton}>
-                <Text style={styles.editLinkText}>Editar</Text>
-              </Pressable>
-              {reminderTime ? (
-                <Pressable onPress={() => confirmDeleteReminder(habit)} style={styles.linkButton}>
-                  <Text style={styles.deleteLinkText}>Quitar recordatorio</Text>
-                </Pressable>
-              ) : null}
-              <Pressable
-                disabled={deletingHabitId === habit.id}
-                onPress={() => confirmDeleteHabit(habit)}
-                style={styles.linkButton}>
-                <Text style={styles.deleteLinkText}>
-                  {deletingHabitId === habit.id ? 'Eliminando...' : 'Eliminar'}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
+          <HabitCard
+            key={habit.id}
+            category={habit.category}
+            completedToday={isCompletedToday}
+            name={habit.name}
+            reminderTime={reminderTime}
+            streak={completionSummary.currentStreak}
+            target={habit.target}
+            actions={
+              <>
+                {isCompletedToday ? (
+                  <SecondaryButton compact disabled fullWidth={false} icon="done" title="Completado" />
+                ) : (
+                  <PrimaryButton
+                    compact
+                    fullWidth={false}
+                    icon="check"
+                    loading={isCompleting}
+                    onPress={() => handleCompleteHabit(habit)}
+                    title="Completar"
+                  />
+                )}
+                <SecondaryButton
+                  compact
+                  fullWidth={false}
+                  icon="chevron-right"
+                  onPress={() => router.push(habitDetailHref(habit.id))}
+                  title="Detalle"
+                />
+                <SecondaryButton
+                  compact
+                  fullWidth={false}
+                  icon="edit"
+                  onPress={() => router.push(habitEditHref(habit.id))}
+                  title="Editar"
+                />
+                {reminderTime ? (
+                  <SecondaryButton
+                    compact
+                    fullWidth={false}
+                    icon="notifications-off"
+                    onPress={() => confirmDeleteReminder(habit)}
+                    title="Quitar recordatorio"
+                    tone="danger"
+                  />
+                ) : null}
+                <SecondaryButton
+                  compact
+                  disabled={deletingHabitId === habit.id}
+                  fullWidth={false}
+                  icon="delete-outline"
+                  loading={deletingHabitId === habit.id}
+                  onPress={() => confirmDeleteHabit(habit)}
+                  title="Eliminar"
+                  tone="danger"
+                />
+              </>
+            }
+          />
         );
       })}
-    </ScrollView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    backgroundColor: '#F7F7F8',
-    flex: 1,
-  },
   content: {
-    gap: 16,
-    padding: 24,
+    gap: spacing.lg,
   },
-  header: {
-    gap: 10,
-    marginBottom: 6,
+  loadingRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+    justifyContent: 'center',
+    minHeight: 54,
   },
-  eyebrow: {
-    color: '#6E6E73',
+  loadingText: {
+    color: colors.textSecondary,
     fontSize: 15,
     fontWeight: '600',
-  },
-  title: {
-    color: '#111111',
-    fontSize: 34,
-    fontWeight: '700',
-  },
-  description: {
-    color: '#5F6368',
-    fontSize: 17,
-    lineHeight: 24,
-  },
-  primaryButton: {
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#0A84FF',
-    borderRadius: 16,
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    minHeight: 48,
-    paddingHorizontal: 16,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  secondaryButton: {
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    borderColor: '#0A84FF',
-    borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    minHeight: 44,
-    paddingHorizontal: 14,
-  },
-  secondaryButtonText: {
-    color: '#0A84FF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  buttonPressed: {
-    opacity: 0.72,
-  },
-  feedback: {
-    borderRadius: 14,
-    fontSize: 15,
-    lineHeight: 20,
-    padding: 12,
-  },
-  success: {
-    backgroundColor: '#E8F7EE',
-    color: '#137333',
-  },
-  error: {
-    backgroundColor: '#FDECEC',
-    color: '#B3261E',
-  },
-  emptyState: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    gap: 10,
-    padding: 18,
-  },
-  emptyTitle: {
-    color: '#1D1D1F',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  emptyText: {
-    color: '#6E6E73',
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  habitCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    gap: 6,
-    padding: 16,
-  },
-  habitCardCompleted: {
-    borderColor: '#34C759',
-    borderWidth: 1,
-  },
-  habitName: {
-    color: '#1D1D1F',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  habitDetail: {
-    color: '#6E6E73',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  completionStatus: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#F2F2F7',
-    borderRadius: 999,
-    color: '#3A3A3C',
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 2,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  completionStatusDone: {
-    backgroundColor: '#E8F7EE',
-    color: '#137333',
-  },
-  cardActions: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 8,
-  },
-  completeButton: {
-    alignItems: 'center',
-    backgroundColor: '#0A84FF',
-    borderRadius: 14,
-    flexDirection: 'row',
-    gap: 6,
-    justifyContent: 'center',
-    minHeight: 40,
-    paddingHorizontal: 12,
-  },
-  completeButtonDone: {
-    backgroundColor: '#34C759',
-  },
-  completeButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  linkButton: {
-    minHeight: 36,
-    justifyContent: 'center',
-  },
-  detailLinkText: {
-    color: '#5856D6',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  editLinkText: {
-    color: '#0A84FF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  deleteLinkText: {
-    color: '#B3261E',
-    fontSize: 15,
-    fontWeight: '700',
   },
 });
