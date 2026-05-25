@@ -6,6 +6,7 @@ import type { HabitRecord } from './habit.ts';
 import {
   calculateBestStreak,
   calculateCurrentStreak,
+  calculateTodaySummary,
   calculateProgressDashboard,
   calculateTodayProgress,
   calculateWeeklySeries,
@@ -109,6 +110,23 @@ test('CP-07 duplicate completions for the same habit and date count once', () =>
   assert.equal(todayProgress.todayCompleted, 1);
   assert.equal(todayProgress.todayCompletionRate, 100);
   assert.equal(dashboard.totalCompletions, 1);
+});
+
+test('CP-07/CP-09 today summary counts only habits scheduled today and active completions', () => {
+  const mondayHabit = createHabit({ id: 'habit-monday', frequency: 'custom', daysOfWeek: [1] });
+  const tuesdayHabit = createHabit({ id: 'habit-tuesday', frequency: 'custom', daysOfWeek: [2] });
+  const summary = calculateTodaySummary(
+    [mondayHabit, tuesdayHabit],
+    [createCompletion('2026-05-11', 'habit-monday'), createCompletion('2026-05-11', 'deleted-habit')],
+    new Date(2026, 4, 11, 12),
+  );
+
+  assert.equal(summary.activeHabitCount, 2);
+  assert.equal(summary.todayHabitCount, 1);
+  assert.equal(summary.completedTodayCount, 1);
+  assert.equal(summary.pendingTodayCount, 0);
+  assert.equal(summary.completionRate, 100);
+  assert.equal(summary.totalCompletions, 1);
 });
 
 test('CP-09 uses local YYYY-MM-DD keys for date normalization', () => {

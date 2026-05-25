@@ -17,6 +17,7 @@ export default function ProtectedAppLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="devices" />
       <Stack.Screen name="habits/create" />
       <Stack.Screen name="habits/[id]" />
       <Stack.Screen name="habits/[id]/edit" />

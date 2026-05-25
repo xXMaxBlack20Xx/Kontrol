@@ -56,7 +56,10 @@ export function PrimaryButton({
       ]}
       {...pressableProps}>
       {loading ? (
-        <ActivityIndicator color={textColor || colors.primaryText} />
+        <>
+          <ActivityIndicator color={textColor || colors.primaryText} />
+          <Text style={[styles.primaryButtonText, { color: textColor || colors.primaryText }]}>{title}</Text>
+        </>
       ) : (
         <>
           {icon ? <MaterialIcons color={textColor || colors.primaryText} name={icon} size={20} /> : null}
@@ -98,7 +101,10 @@ export function SecondaryButton({
       ]}
       {...pressableProps}>
       {loading ? (
-        <ActivityIndicator color={contentColor} />
+        <>
+          <ActivityIndicator color={contentColor} />
+          <Text style={[styles.secondaryButtonText, { color: contentColor }]}>{title}</Text>
+        </>
       ) : (
         <>
           {icon ? <MaterialIcons color={contentColor} name={icon} size={20} /> : null}
@@ -135,7 +141,10 @@ export function DestructiveButton({
       ]}
       {...pressableProps}>
       {loading ? (
-        <ActivityIndicator color={colors.primaryText} />
+        <>
+          <ActivityIndicator color={colors.primaryText} />
+          <Text style={[styles.primaryButtonText, { color: colors.primaryText }]}>{title}</Text>
+        </>
       ) : (
         <>
           {icon ? <MaterialIcons color={colors.primaryText} name={icon} size={20} /> : null}

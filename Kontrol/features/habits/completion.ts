@@ -1,4 +1,5 @@
 import type { HabitRecord } from './habit';
+import { isHabitScheduledForDate } from './progress-helpers.ts';
 
 export type HabitCompletionRecord = {
   id: string;
@@ -50,10 +51,11 @@ export type HabitCompletionRepository = {
   listByHabit(habitId: string): Promise<HabitCompletionRecord[]>;
 };
 
-export type CompleteHabitErrorCode = 'HABIT_COMPLETION_UNAVAILABLE';
+export type CompleteHabitErrorCode = 'HABIT_COMPLETION_UNAVAILABLE' | 'HABIT_NOT_SCHEDULED_TODAY';
 
 export const completeHabitErrorMessages: Record<CompleteHabitErrorCode, string> = {
   HABIT_COMPLETION_UNAVAILABLE: 'No se pudo registrar el cumplimiento. Intenta nuevamente.',
+  HABIT_NOT_SCHEDULED_TODAY: 'Este hábito no está programado para hoy.',
 };
 
 export class CompleteHabitError extends Error {
@@ -209,6 +211,10 @@ export async function completeHabitForToday(
   today = new Date(),
 ): Promise<CompleteHabitResult> {
   const completedOn = formatLocalDateKey(today);
+
+  if (!isHabitScheduledForDate(habit, today)) {
+    throw new CompleteHabitError('HABIT_NOT_SCHEDULED_TODAY');
+  }
 
   try {
     const existingCompletion = await repository.findByHabitDate(habit.id, completedOn);

@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { spacing, typography } from './theme';
@@ -13,6 +14,7 @@ type AppHeaderProps = {
   textColor?: string;
   descriptionColor?: string;
   eyebrowColor?: string;
+  rightElement?: ReactNode;
 };
 
 export function AppHeader({
@@ -24,6 +26,7 @@ export function AppHeader({
   textColor,
   descriptionColor,
   eyebrowColor,
+  rightElement,
 }: AppHeaderProps) {
   const { colors } = useTheme();
 
@@ -37,7 +40,12 @@ export function AppHeader({
       ) : null}
 
       {eyebrow ? <Text style={[styles.eyebrow, { color: colors.textSecondary }, eyebrowColor ? { color: eyebrowColor } : null]}>{eyebrow}</Text> : null}
-      <Text style={[styles.title, { color: colors.textPrimary }, textColor ? { color: textColor } : null]}>{title}</Text>
+      
+      <View style={styles.titleContainer}>
+        <Text style={[styles.title, { color: colors.textPrimary }, textColor ? { color: textColor } : null]}>{title}</Text>
+        {rightElement ? rightElement : null}
+      </View>
+
       {description ? (
         <Text style={[styles.description, { color: colors.textSecondary }, descriptionColor ? { color: descriptionColor } : null]}>
           {description}
@@ -71,7 +79,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: typography.weights.semibold,
   },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
   title: {
+    flex: 1,
     fontFamily: typography.fontFamily,
     fontSize: 36,
     fontWeight: typography.weights.heavy,

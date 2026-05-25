@@ -17,7 +17,7 @@ let accessToken: string | null = null;
 let refreshHandler: (() => Promise<string | null>) | null = null;
 let refreshPromise: Promise<string | null> | null = null;
 
-function getApiBaseUrl(): string {
+export function getConfiguredApiBaseUrl(): string {
   const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim().replace(/\/$/, '');
 
   if (!baseUrl) {
@@ -33,7 +33,7 @@ function getApiBaseUrl(): string {
 
 function buildUrl(path: string, query?: RequestOptions['query']): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  const url = new URL(`${getApiBaseUrl()}${normalizedPath}`);
+  const url = new URL(`${getConfiguredApiBaseUrl()}${normalizedPath}`);
 
   Object.entries(query ?? {}).forEach(([key, value]) => {
     if (value !== undefined) {

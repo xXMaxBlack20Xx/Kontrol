@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 
 import { SessionLoadingScreen } from '@/components/session-loading-screen';
 import { AppHeader } from '@/components/ui/app-header';
@@ -20,7 +20,7 @@ import {
   completeHabitForToday,
   type HabitDetailSummary,
 } from '@/features/habits/completion';
-import type { HabitRecord } from '@/features/habits/habit';
+import { formatHabitDays, type HabitRecord } from '@/features/habits/habit';
 import { remoteCompletionRepository } from '@/features/habits/remote-completion-repository';
 import { remoteHabitRepository } from '@/features/habits/remote-habit-repository';
 import { habitEditHref } from '@/features/navigation/routes';
@@ -156,6 +156,10 @@ export default function HabitDetailScreen() {
 
       {habitDetail ? (
         <Card style={styles.card}>
+          {habitDetail.habit.coverPhotoUrl ? (
+            <Image source={{ uri: habitDetail.habit.coverPhotoUrl }} style={styles.coverImage} />
+          ) : null}
+
           <View style={styles.statusRow}>
             <Text style={styles.statusLabel}>Estado de hoy</Text>
             <View style={styles.statusPill}>
@@ -166,9 +170,12 @@ export default function HabitDetailScreen() {
           </View>
 
           <View style={styles.detailList}>
-            <Text style={styles.habitDetail}>Frecuencia: diaria</Text>
+            <Text style={styles.habitDetail}>Frecuencia: {formatHabitDays(habitDetail.habit.daysOfWeek)}</Text>
             {habitDetail.habit.category ? (
               <Text style={styles.habitDetail}>Categoría: {habitDetail.habit.category}</Text>
+            ) : null}
+            {habitDetail.habit.subcategories?.length ? (
+              <Text style={styles.habitDetail}>Subcategorías: {habitDetail.habit.subcategories.join(', ')}</Text>
             ) : null}
             {habitDetail.habit.target ? (
               <Text style={styles.habitDetail}>Meta: {habitDetail.habit.target}</Text>
@@ -255,6 +262,11 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   },
   card: {
     gap: spacing.lg,
+  },
+  coverImage: {
+    alignSelf: 'stretch',
+    borderRadius: radius.xl,
+    height: 180,
   },
   statusRow: {
     alignItems: 'center',

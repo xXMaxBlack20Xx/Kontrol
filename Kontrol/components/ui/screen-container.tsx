@@ -1,7 +1,8 @@
-import { PropsWithChildren } from 'react';
+import { PropsWithChildren, ReactElement } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  RefreshControlProps,
   ScrollView,
   StyleProp,
   StyleSheet,
@@ -19,6 +20,7 @@ type ScreenContainerProps = PropsWithChildren<{
   style?: StyleProp<ViewStyle>;
   edges?: Edge[];
   keyboardAvoiding?: boolean;
+  refreshControl?: ReactElement<RefreshControlProps>;
   scroll?: boolean;
 }>;
 
@@ -29,6 +31,7 @@ export function ScreenContainer({
   style,
   edges,
   keyboardAvoiding = false,
+  refreshControl,
   scroll = true,
 }: ScreenContainerProps) {
   const { colors } = useTheme();
@@ -39,6 +42,7 @@ export function ScreenContainer({
       contentContainerStyle={[styles.content, centered && styles.centered, contentStyle]}
       keyboardDismissMode="interactive"
       keyboardShouldPersistTaps="handled"
+      refreshControl={refreshControl}
       showsVerticalScrollIndicator={false}>
       {children}
     </ScrollView>

@@ -20,12 +20,14 @@ export function EmptyState({ action, description, icon = 'inbox', title }: Empty
 
   return (
     <Card style={styles.emptyState}>
-      <View style={[styles.iconFrame, { backgroundColor: colors.surfaceMuted }]}>
-        <MaterialIcons color={colors.textPrimary} name={icon} size={22} />
-      </View>
-      <View style={styles.copy}>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
-        <Text style={[styles.description, { color: colors.textSecondary }]}>{description}</Text>
+      <View style={styles.headerRow}>
+        <View style={styles.copy}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
+          <Text style={[styles.description, { color: colors.textSecondary }]}>{description}</Text>
+        </View>
+        <View style={[styles.iconFrame, { backgroundColor: colors.surfaceMuted }]}>
+          <MaterialIcons color={colors.textPrimary} name={icon} size={22} />
+        </View>
       </View>
       {action}
     </Card>
@@ -36,6 +38,12 @@ const styles = StyleSheet.create({
   emptyState: {
     gap: spacing.md,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
   iconFrame: {
     alignItems: 'center',
     borderRadius: radius.md,
@@ -44,6 +52,7 @@ const styles = StyleSheet.create({
     width: 42,
   },
   copy: {
+    flex: 1,
     gap: spacing.xs,
   },
   title: {

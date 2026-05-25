@@ -26,13 +26,18 @@ export async function listRemoteReminders(): Promise<RemoteReminder[]> {
   return response.reminders;
 }
 
-export async function syncRemoteReminder(input: { habitId: string; habitName: string; time: string }): Promise<void> {
+export async function syncRemoteReminder(input: {
+  daysOfWeek?: number[];
+  habitId: string;
+  habitName: string;
+  time: string;
+}): Promise<void> {
   const reminders = await listRemoteReminders();
   const existingReminder = reminders.find((reminder) => reminder.habitId === input.habitId);
   const body = {
     title: input.habitName.trim() || 'Hábito',
     time: input.time,
-    daysOfWeek: everyDay,
+    daysOfWeek: input.daysOfWeek?.length ? input.daysOfWeek : everyDay,
     enabled: true,
     timezone: getTimezone(),
   };

@@ -104,6 +104,22 @@ test('CP-07 failure path preserves one valid completion for the same habit and d
   assert.equal(repository.count(), 1);
 });
 
+test('CP-07 failure path blocks completion outside scheduled days before writing', async () => {
+  const habit = createExistingHabit();
+  const repository = createMemoryCompletionRepository();
+  const mondayWednesdayFridayHabit: HabitRecord = {
+    ...habit,
+    frequency: 'custom',
+    daysOfWeek: [1, 3, 5],
+  };
+
+  await assert.rejects(
+    completeHabitForToday(mondayWednesdayFridayHabit, repository, new Date(2026, 4, 12, 12)),
+    { code: 'HABIT_NOT_SCHEDULED_TODAY' },
+  );
+  assert.equal(repository.count(), 0);
+});
+
 test('CP-07 recalculates the current streak from consecutive completion dates', () => {
   const streak = calculateCurrentStreak(
     [createCompletion('2026-05-09'), createCompletion('2026-05-10'), createCompletion('2026-05-11')],

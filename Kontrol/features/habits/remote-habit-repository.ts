@@ -1,4 +1,5 @@
 import { ApiError, apiRequest } from '@/features/api/api';
+import { getPhoto } from '@/features/api/photo-service';
 
 import type { HabitRecord, HabitRepository } from './habit';
 
@@ -7,10 +8,13 @@ type ApiHabit = {
   userId: string;
   name: string;
   category: string | null;
+  subcategories?: string[];
   frequency: string;
+  daysOfWeek?: number[];
   goal: string | null;
   color: string | null;
   icon: string | null;
+  coverPhotoId?: string | null;
   isArchived: boolean;
   isDeleted: boolean;
   syncVersion: number;
@@ -24,13 +28,33 @@ function optionalText(value?: string): string | null {
   return normalizedValue ? normalizedValue : null;
 }
 
-function toHabitRecord(habit: ApiHabit): HabitRecord {
+async function getCoverPhotoUrl(coverPhotoId?: string | null): Promise<string | undefined> {
+  if (!coverPhotoId) {
+    return undefined;
+  }
+
+  try {
+    const response = await getPhoto(coverPhotoId);
+
+    return response.readUrl;
+  } catch {
+    return undefined;
+  }
+}
+
+async function toHabitRecord(habit: ApiHabit): Promise<HabitRecord> {
   return {
     id: habit.id,
     accountId: habit.userId,
     name: habit.name,
-    frequency: habit.frequency === 'daily' ? 'daily' : 'daily',
+    frequency: habit.frequency === 'custom' ? 'custom' : 'daily',
     category: habit.category ?? undefined,
+    subcategories: habit.subcategories?.filter(Boolean),
+    daysOfWeek: habit.daysOfWeek,
+    color: habit.color ?? undefined,
+    icon: habit.icon ?? undefined,
+    coverPhotoId: habit.coverPhotoId ?? undefined,
+    coverPhotoUrl: await getCoverPhotoUrl(habit.coverPhotoId),
     target: habit.goal ?? undefined,
     createdAt: habit.createdAt,
   };
@@ -42,10 +66,12 @@ export const remoteHabitRepository: HabitRepository = {
       body: {
         name: habit.name,
         category: optionalText(habit.category),
+        subcategories: habit.subcategories ?? [],
         frequency: habit.frequency,
+        daysOfWeek: habit.daysOfWeek,
         goal: optionalText(habit.target),
-        color: null,
-        icon: null,
+        color: optionalText(habit.color),
+        icon: optionalText(habit.icon),
       },
       method: 'POST',
     });
@@ -57,8 +83,13 @@ export const remoteHabitRepository: HabitRepository = {
       body: {
         name: habit.name,
         category: optionalText(habit.category),
+        subcategories: habit.subcategories ?? [],
         frequency: habit.frequency,
+        daysOfWeek: habit.daysOfWeek,
         goal: optionalText(habit.target),
+        color: optionalText(habit.color),
+        icon: optionalText(habit.icon),
+        coverPhotoId: optionalText(habit.coverPhotoId),
       },
       method: 'PUT',
     });
@@ -83,6 +114,6 @@ export const remoteHabitRepository: HabitRepository = {
   async listByAccount() {
     const response = await apiRequest<{ habits: ApiHabit[] }>('/habits');
 
-    return response.habits.map(toHabitRecord);
+    return Promise.all(response.habits.map(toHabitRecord));
   },
 };

@@ -13,21 +13,21 @@ import { useTheme } from '@/components/ui/theme-context';
 const sections = [
   {
     icon: 'lock-outline' as const,
-    title: 'Datos locales',
+    title: 'Datos locales y cloud',
     body:
-      'Tu cuenta, sesión, hábitos, cumplimientos y recordatorios se guardan en el almacenamiento local del dispositivo.',
+      'Kontrol conserva sesión segura en el dispositivo y consume Azure Functions para cuenta, hábitos, cumplimientos, recordatorios, fotos y dispositivos cuando hay sesión activa.',
   },
   {
     icon: 'password' as const,
     title: 'Contraseña protegida',
     body:
-      'La contraseña se guarda como hash con sal mediante la abstracción de seguridad local del proyecto, no como texto plano.',
+      'La contraseña se envía al backend de Kontrol por HTTPS y se almacena como hash con argon2. La app no guarda contraseñas en texto plano.',
   },
   {
     icon: 'notifications-none' as const,
     title: 'Recordatorios',
     body:
-      'Los recordatorios usan notificaciones locales del dispositivo cuando el sistema concede permisos. No se envían datos a un servidor para programarlos.',
+      'Los recordatorios usan notificaciones locales con permisos del sistema. El registro de dispositivos para push remoto se realiza mediante Azure Functions si el entorno nativo lo permite.',
   },
   {
     icon: 'logout' as const,
@@ -63,7 +63,7 @@ export default function PrivacyScreen() {
     >
       <ScreenContainer style={{ backgroundColor: 'transparent' }} contentStyle={styles.content} edges={['bottom']}>
         <AppHeader
-          description="Kontrol funciona localmente en este MVP. No hay backend, sincronización en la nube ni funciones sociales."
+          description="Kontrol usa un backend propio en Azure Functions para autenticación y datos protegidos, sin funciones sociales ni acceso directo a llaves privadas de Azure."
           title="Aviso de privacidad"
         />
 

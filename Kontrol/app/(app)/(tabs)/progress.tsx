@@ -114,20 +114,26 @@ function StreakHero({ progress }: { progress: ProgressDashboard }) {
   return (
     <Card style={styles.streakCard}>
       <View style={styles.streakHeaderRow}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.cardEyebrow}>Racha actual</Text>
-          <Text style={styles.streakValue}>{progress.currentStreak} días</Text>
+          <Text style={styles.streakValue}>
+            {progress.currentStreak} <Text style={styles.streakUnit}>días</Text>
+          </Text>
         </View>
         <View style={styles.flameBadge}>
-          <MaterialIcons color={isDark ? '#FFD60A' : '#FF7A1A'} name="local-fire-department" size={34} />
+          <MaterialIcons color={isDark ? '#FFD60A' : '#FF9500'} name="local-fire-department" size={32} />
         </View>
       </View>
 
       <Text style={styles.streakSubtitle}>{subtitle}</Text>
 
       <View style={styles.bestStreakPill}>
-        <MaterialIcons color={isDark ? '#FFD60A' : '#B26A00'} name="emoji-events" size={18} />
-        <Text style={styles.bestStreakText}>Mejor racha: {progress.bestStreak} días</Text>
+        <MaterialIcons color={isDark ? '#FFD60A' : '#FF9500'} name="emoji-events" size={16} />
+        <Text style={styles.bestStreakText}>
+          Mejor racha:{' '}
+          <Text style={styles.bestStreakNumber}>{progress.bestStreak}</Text>{' '}
+          días
+        </Text>
       </View>
     </Card>
   );
@@ -152,10 +158,12 @@ function MetricCard({ detail, icon, label, value }: { detail?: string; icon: Ico
 
   return (
     <Card style={styles.metricCard}>
-      <View style={styles.metricIconBadge}>
-        <MaterialIcons color={colors.primary} name={icon} size={20} />
+      <View style={styles.metricHeaderRow}>
+        <View style={styles.metricIconBadge}>
+          <MaterialIcons color={colors.primary} name={icon} size={16} />
+        </View>
+        <Text numberOfLines={1} style={styles.metricLabel}>{label}</Text>
       </View>
-      <Text style={styles.metricLabel}>{label}</Text>
       <Text style={styles.metricValue}>{value}</Text>
       {detail ? <Text style={styles.metricDetail}>{detail}</Text> : null}
     </Card>
@@ -173,7 +181,9 @@ function WeeklyProgress({ points }: { points: WeeklyProgressPoint[] }) {
           <Text style={styles.sectionTitle}>Semana</Text>
           <Text style={styles.sectionCaption}>Cumplimientos por día programado</Text>
         </View>
-        <MaterialIcons color={colors.textSecondary} name="trending-up" size={22} />
+        <View style={styles.sectionIconBadge}>
+          <MaterialIcons color={colors.primary} name="trending-up" size={20} />
+        </View>
       </View>
 
       <View style={styles.weekRow}>
@@ -188,7 +198,8 @@ function WeeklyProgress({ points }: { points: WeeklyProgressPoint[] }) {
 function DayBar({ point }: { point: WeeklyProgressPoint }) {
   const { colors, isDark } = useTheme();
   const styles = getStyles(colors, isDark);
-  const barHeight = Math.max(8, Math.round(point.rate * 0.72));
+  const maxBarHeight = 90;
+  const barHeight = Math.max(6, Math.round((point.rate / 100) * maxBarHeight));
 
   return (
     <View style={styles.dayColumn}>
@@ -196,7 +207,7 @@ function DayBar({ point }: { point: WeeklyProgressPoint }) {
         <View
           style={[
             styles.dayFill,
-            { height: barHeight, opacity: point.isFuture ? 0.28 : 1 },
+            { height: barHeight, opacity: point.isFuture ? 0.3 : 1 },
             point.rate === 0 && styles.dayFillEmpty,
           ]}
         />
@@ -218,7 +229,9 @@ function HabitProgressList({ habits }: { habits: ProgressHabitStat[] }) {
           <Text style={styles.sectionTitle}>Por hábito</Text>
           <Text style={styles.sectionCaption}>Racha individual y avance del mes</Text>
         </View>
-        <MaterialIcons color={colors.textSecondary} name="format-list-bulleted" size={22} />
+        <View style={styles.sectionIconBadge}>
+          <MaterialIcons color={colors.primary} name="format-list-bulleted" size={20} />
+        </View>
       </View>
 
       <View style={styles.habitList}>
@@ -240,7 +253,7 @@ function HabitProgressRow({ habit }: { habit: ProgressHabitStat }) {
       {habit.coverPhotoUrl ? (
         <Image source={{ uri: habit.coverPhotoUrl }} style={styles.habitImage} />
       ) : (
-        <View style={[styles.habitIcon, { backgroundColor: `${accentColor}24` }]}>
+        <View style={[styles.habitIcon, { backgroundColor: `${accentColor}18` }]}>
           <MaterialIcons color={accentColor} name={habit.completedToday ? 'check-circle' : 'radio-button-unchecked'} size={24} />
         </View>
       )}
@@ -248,13 +261,22 @@ function HabitProgressRow({ habit }: { habit: ProgressHabitStat }) {
       <View style={styles.habitContent}>
         <View style={styles.habitTitleRow}>
           <Text numberOfLines={1} style={styles.habitName}>{habit.name}</Text>
-          <Text style={[styles.habitStatus, habit.completedToday && styles.habitStatusDone]}>
-            {habit.completedToday ? 'Hoy listo' : 'Pendiente'}
-          </Text>
+          <View style={[
+            styles.statusBadge,
+            { backgroundColor: habit.completedToday ? (isDark ? 'rgba(48, 209, 88, 0.12)' : 'rgba(52, 199, 89, 0.1)') : colors.surfaceMuted }
+          ]}>
+            <Text style={[styles.habitStatus, habit.completedToday && styles.habitStatusDone]}>
+              {habit.completedToday ? 'Hoy listo' : 'Pendiente'}
+            </Text>
+          </View>
         </View>
         <View style={styles.habitMetaRow}>
-          <Text style={styles.habitMeta}>{habit.currentStreak} días de racha</Text>
-          <Text style={styles.habitMeta}>{habit.completionRate}% del mes</Text>
+          <Text style={styles.habitMeta}>
+            Racha: <Text style={styles.habitMetaNumber}>{habit.currentStreak}</Text> días
+          </Text>
+          <Text style={styles.habitMeta}>
+            Mes: <Text style={styles.habitMetaNumber}>{habit.completionRate}%</Text>
+          </Text>
         </View>
         <View style={styles.habitTrack}>
           <View style={[styles.habitFill, { width: `${habit.completionRate}%`, backgroundColor: accentColor }]} />
@@ -311,17 +333,23 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     flex: 1,
   },
   content: {
-    gap: spacing.lg,
-    paddingBottom: 120,
+    gap: spacing.xl,
+    paddingBottom: 140,
   },
   streakCard: {
-    backgroundColor: isDark ? 'rgba(46, 28, 20, 0.92)' : '#FFF1E7',
-    borderColor: isDark ? 'rgba(255, 214, 10, 0.18)' : '#FFD4B8',
-    gap: spacing.lg,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 24,
+    borderWidth: 0,
+    gap: spacing.md,
     padding: spacing.xl,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: isDark ? 0.22 : 0.03,
+    shadowRadius: 16,
+    elevation: 2,
   },
   streakHeaderRow: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: spacing.lg,
@@ -329,87 +357,124 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   cardEyebrow: {
     color: colors.textSecondary,
     fontFamily: typography.fontFamily,
-    fontSize: 15,
-    fontWeight: typography.weights.semibold,
+    fontSize: 12,
+    fontWeight: typography.weights.heavy,
+    letterSpacing: -0.2,
+    textTransform: 'uppercase',
   },
   streakValue: {
     color: colors.textPrimary,
     fontFamily: typography.fontFamilyRound,
-    fontSize: 52,
+    fontSize: 48,
     fontWeight: typography.weights.heavy,
-    letterSpacing: -1.6,
-    lineHeight: 58,
-    marginTop: spacing.xs,
+    letterSpacing: -1.2,
+    marginTop: 2,
+  },
+  streakUnit: {
+    fontSize: 24,
+    fontWeight: typography.weights.semibold,
+    color: colors.textSecondary,
   },
   flameBadge: {
     alignItems: 'center',
-    backgroundColor: isDark ? 'rgba(255, 214, 10, 0.13)' : '#FFFFFF',
-    borderRadius: radius.xl,
-    height: 58,
+    backgroundColor: isDark ? 'rgba(255, 149, 0, 0.12)' : 'rgba(255, 149, 0, 0.08)',
+    borderRadius: 16,
+    height: 52,
     justifyContent: 'center',
-    width: 58,
+    width: 52,
   },
   streakSubtitle: {
     color: colors.textSecondary,
     fontFamily: typography.fontFamily,
-    fontSize: 17,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
   },
   bestStreakPill: {
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: isDark ? 'rgba(255, 214, 10, 0.12)' : 'rgba(255, 184, 77, 0.22)',
+    backgroundColor: isDark ? 'rgba(255, 214, 10, 0.12)' : 'rgba(255, 184, 77, 0.12)',
     borderRadius: radius.pill,
     flexDirection: 'row',
     gap: spacing.xs,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: 6,
   },
   bestStreakText: {
-    color: colors.textPrimary,
-    fontFamily: typography.fontFamily,
-    fontSize: 14,
-    fontWeight: typography.weights.semibold,
-  },
-  metricCard: {
-    flexBasis: '47%',
-    flexGrow: 1,
-    gap: spacing.xs,
-    minHeight: 132,
-  },
-  metricIconBadge: {
-    alignItems: 'center',
-    backgroundColor: isDark ? 'rgba(10, 132, 255, 0.14)' : 'rgba(0, 122, 255, 0.1)',
-    borderRadius: radius.md,
-    height: 36,
-    justifyContent: 'center',
-    width: 36,
-  },
-  metricLabel: {
     color: colors.textSecondary,
-    fontFamily: typography.fontFamily,
-    fontSize: 14,
-    fontWeight: typography.weights.semibold,
-    marginTop: spacing.xs,
-  },
-  metricValue: {
-    color: colors.textPrimary,
-    fontFamily: typography.fontFamilyRound,
-    fontSize: 30,
-    fontWeight: typography.weights.heavy,
-    letterSpacing: -0.8,
-  },
-  metricDetail: {
-    color: colors.textTertiary,
     fontFamily: typography.fontFamily,
     fontSize: 13,
     fontWeight: typography.weights.semibold,
   },
+  bestStreakNumber: {
+    fontFamily: typography.fontFamilyRound,
+    fontWeight: typography.weights.heavy,
+    color: colors.textPrimary,
+  },
+  metricCard: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 22,
+    borderWidth: 0,
+    gap: spacing.xs,
+    padding: spacing.lg,
+    minHeight: 110,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: isDark ? 0.15 : 0.02,
+    shadowRadius: 12,
+    elevation: 1,
+  },
+  metricHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  metricIconBadge: {
+    alignItems: 'center',
+    backgroundColor: isDark ? 'rgba(10, 132, 255, 0.12)' : 'rgba(0, 122, 255, 0.08)',
+    borderRadius: radius.md,
+    height: 28,
+    justifyContent: 'center',
+    width: 28,
+  },
+  metricLabel: {
+    color: colors.textSecondary,
+    fontFamily: typography.fontFamily,
+    fontSize: 11,
+    fontWeight: typography.weights.heavy,
+    letterSpacing: -0.2,
+    textTransform: 'uppercase',
+    flex: 1,
+  },
+  metricValue: {
+    color: colors.textPrimary,
+    fontFamily: typography.fontFamilyRound,
+    fontSize: 26,
+    fontWeight: typography.weights.heavy,
+    letterSpacing: -0.8,
+    marginTop: spacing.xs,
+  },
+  metricDetail: {
+    color: colors.textTertiary,
+    fontFamily: typography.fontFamily,
+    fontSize: 12,
+    fontWeight: typography.weights.semibold,
+  },
   sectionCard: {
-    gap: spacing.lg,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 24,
+    borderWidth: 0,
+    gap: spacing.xl,
+    padding: spacing.xl,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: isDark ? 0.22 : 0.03,
+    shadowRadius: 16,
+    elevation: 2,
   },
   sectionHeadingRow: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: spacing.md,
@@ -417,22 +482,31 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   sectionTitle: {
     color: colors.textPrimary,
     fontFamily: typography.fontFamily,
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: typography.weights.heavy,
-    letterSpacing: -0.4,
+    letterSpacing: -0.6,
   },
   sectionCaption: {
     color: colors.textSecondary,
     fontFamily: typography.fontFamily,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
     marginTop: 2,
+  },
+  sectionIconBadge: {
+    alignItems: 'center',
+    backgroundColor: isDark ? 'rgba(10, 132, 255, 0.12)' : 'rgba(0, 122, 255, 0.08)',
+    borderRadius: radius.md,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
   },
   weekRow: {
     alignItems: 'flex-end',
     flexDirection: 'row',
     gap: spacing.sm,
     justifyContent: 'space-between',
+    paddingTop: spacing.xs,
   },
   dayColumn: {
     alignItems: 'center',
@@ -441,60 +515,61 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   },
   dayTrack: {
     alignItems: 'center',
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
     borderRadius: radius.pill,
-    height: 78,
+    height: 90,
     justifyContent: 'flex-end',
     overflow: 'hidden',
-    width: '100%',
+    width: 14,
   },
   dayTrackToday: {
-    borderColor: colors.primary,
-    borderWidth: 1,
+    backgroundColor: isDark ? 'rgba(10, 132, 255, 0.15)' : 'rgba(0, 122, 255, 0.08)',
   },
   dayFill: {
-    backgroundColor: isDark ? '#30D158' : '#34C759',
+    backgroundColor: colors.primary,
     borderRadius: radius.pill,
-    minHeight: 8,
     width: '100%',
   },
   dayFillEmpty: {
-    backgroundColor: colors.borderStrong,
+    backgroundColor: 'transparent',
   },
   dayLabel: {
     color: colors.textSecondary,
     fontFamily: typography.fontFamily,
     fontSize: 12,
     fontWeight: typography.weights.semibold,
+    marginTop: spacing.xs,
   },
   dayLabelToday: {
     color: colors.primary,
+    fontWeight: typography.weights.heavy,
   },
   dayCount: {
     color: colors.textTertiary,
     fontFamily: typography.fontFamilyRound,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: typography.weights.semibold,
   },
   habitList: {
-    gap: spacing.md,
+    gap: spacing.lg,
   },
   habitRow: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: spacing.md,
+    paddingVertical: 2,
   },
   habitImage: {
     borderRadius: radius.lg,
-    height: 54,
-    width: 54,
+    height: 52,
+    width: 52,
   },
   habitIcon: {
     alignItems: 'center',
     borderRadius: radius.lg,
-    height: 54,
+    height: 52,
     justifyContent: 'center',
-    width: 54,
+    width: 52,
   },
   habitContent: {
     flex: 1,
@@ -512,15 +587,21 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontFamily: typography.fontFamily,
     fontSize: 16,
     fontWeight: typography.weights.heavy,
+    letterSpacing: -0.3,
+  },
+  statusBadge: {
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
   },
   habitStatus: {
-    color: colors.textTertiary,
     fontFamily: typography.fontFamily,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: typography.weights.semibold,
+    color: colors.textSecondary,
   },
   habitStatusDone: {
-    color: colors.successText,
+    color: isDark ? '#30D158' : '#248A3D',
   },
   habitMetaRow: {
     flexDirection: 'row',
@@ -533,10 +614,17 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontSize: 13,
     fontWeight: typography.weights.semibold,
   },
+  habitMetaNumber: {
+    fontFamily: typography.fontFamilyRound,
+    fontSize: 14,
+    fontWeight: typography.weights.heavy,
+    color: colors.textPrimary,
+  },
   habitTrack: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
     borderRadius: radius.pill,
-    height: 7,
+    height: 8,
+    marginTop: 4,
     overflow: 'hidden',
   },
   habitFill: {
@@ -548,6 +636,9 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   },
   skeletonHero: {
     alignItems: 'center',
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 24,
+    borderWidth: 0,
     gap: spacing.md,
     minHeight: 190,
     justifyContent: 'center',
@@ -555,8 +646,11 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   skeletonMetric: {
     flexBasis: '47%',
     flexGrow: 1,
-    minHeight: 132,
-    opacity: 0.72,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 22,
+    borderWidth: 0,
+    minHeight: 110,
+    opacity: 0.6,
   },
   loadingText: {
     color: colors.textSecondary,

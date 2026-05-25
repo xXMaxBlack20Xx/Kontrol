@@ -8,6 +8,7 @@ import { useTheme } from './theme-context';
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
 type SettingsRowProps = {
+  accessibilityLabel?: string;
   detail?: string;
   icon: IconName;
   onPress?: () => void;
@@ -20,6 +21,7 @@ type SettingsRowProps = {
 };
 
 export function SettingsRow({
+  accessibilityLabel,
   detail,
   icon,
   onPress,
@@ -59,13 +61,18 @@ export function SettingsRow({
 
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+      <Pressable
+        accessibilityLabel={accessibilityLabel ?? title}
+        accessibilityRole="button"
+        onPress={onPress}
+        style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      >
         {rowContent}
       </Pressable>
     );
   }
 
-  return <View style={styles.row}>{rowContent}</View>;
+  return <View accessibilityLabel={accessibilityLabel ?? title} style={styles.row}>{rowContent}</View>;
 }
 
 const styles = StyleSheet.create({

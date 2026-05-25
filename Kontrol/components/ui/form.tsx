@@ -17,8 +17,11 @@ import { useTheme } from './theme-context';
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
 type TextInputFieldProps = TextInputProps & {
+  error?: string;
+  helperText?: string;
   icon?: IconName;
   label: string;
+  containerStyle?: StyleProp<ViewStyle>;
 };
 
 type FeedbackMessageProps = {
@@ -27,25 +30,38 @@ type FeedbackMessageProps = {
 };
 
 type SelectPillProps = {
+  accessibilityLabel?: string;
+  disabled?: boolean;
+  icon?: IconName;
   label: string;
   onPress: () => void;
   selected: boolean;
+  style?: StyleProp<ViewStyle>;
 };
 
-export function TextInputField({ icon, label, style, ...textInputProps }: TextInputFieldProps) {
+export function TextInputField({ error, helperText, icon, label, style, containerStyle, ...textInputProps }: TextInputFieldProps) {
   const { colors } = useTheme();
 
   return (
     <View style={styles.field}>
       <Text style={[styles.label, { color: colors.textPrimary }]}>{label}</Text>
-      <View style={[styles.inputShell, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
+      <View
+        style={[
+          styles.inputShell,
+          { backgroundColor: colors.surfaceMuted, borderColor: error ? colors.dangerText : colors.border },
+          containerStyle,
+        ]}>
         {icon ? <MaterialIcons color={colors.textTertiary} name={icon} size={20} /> : null}
         <TextInput
+          accessibilityLabel={label}
+          accessibilityHint={error}
           placeholderTextColor={colors.textTertiary}
           style={[styles.input, { color: colors.textPrimary }, style]}
           {...textInputProps}
         />
       </View>
+      {error ? <Text style={[styles.fieldMessage, { color: colors.dangerText }]}>{error}</Text> : null}
+      {!error && helperText ? <Text style={[styles.fieldMessage, { color: colors.textSecondary }]}>{helperText}</Text> : null}
     </View>
   );
 }
@@ -81,12 +97,15 @@ export function FeedbackMessage({ message, type = 'error' }: FeedbackMessageProp
   );
 }
 
-export function SelectPill({ label, onPress, selected }: SelectPillProps) {
+export function SelectPill({ accessibilityLabel, disabled = false, icon, label, onPress, selected, style }: SelectPillProps) {
   const { colors } = useTheme();
 
   return (
     <Pressable
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
+      accessibilityState={{ disabled, selected }}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.selectPill,
@@ -95,8 +114,11 @@ export function SelectPill({ label, onPress, selected }: SelectPillProps) {
           borderColor: colors.borderStrong,
         },
         selected && [styles.selectPillSelected, { backgroundColor: colors.primary, borderColor: colors.primary }],
-        pressed && styles.pressed,
+        disabled && styles.disabled,
+        pressed && !disabled && styles.pressed,
+        style,
       ]}>
+      {icon ? <MaterialIcons color={selected ? colors.primaryText : colors.textSecondary} name={icon} size={18} /> : null}
       <Text style={[styles.selectPillText, { color: colors.textPrimary }, selected && { color: colors.primaryText }]}>{label}</Text>
     </Pressable>
   );
@@ -134,6 +156,11 @@ const styles = StyleSheet.create({
     fontSize: 17,
     minHeight: 52,
   },
+  fieldMessage: {
+    fontFamily: typography.fontFamily,
+    fontSize: 13,
+    lineHeight: 18,
+  },
   feedback: {
     borderRadius: radius.md,
     fontSize: 15,
@@ -145,6 +172,8 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     borderRadius: radius.pill,
     borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.xs,
     justifyContent: 'center',
     minHeight: 44,
     paddingHorizontal: 18,
@@ -158,6 +187,9 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.72,
+  },
+  disabled: {
+    opacity: 0.48,
   },
   formGroup: {
     gap: spacing.lg,

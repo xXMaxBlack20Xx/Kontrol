@@ -49,6 +49,42 @@ async function getNotificationsModule(): Promise<ExpoNotificationsModule | null>
   return notificationsModulePromise;
 }
 
+export async function getLocalNotificationPermissionStatus(): Promise<'granted' | 'denied' | 'undetermined' | 'unavailable'> {
+  const notifications = await getNotificationsModule();
+
+  if (!notifications) {
+    return 'unavailable';
+  }
+
+  const permissions = await notifications.getPermissionsAsync();
+
+  if (hasNotificationPermission(permissions, notifications)) {
+    return 'granted';
+  }
+
+  return permissions.status === notifications.PermissionStatus.DENIED ? 'denied' : 'undetermined';
+}
+
+export async function requestLocalNotificationPermissionStatus(): Promise<'granted' | 'denied' | 'unavailable'> {
+  return expoNotificationScheduler.requestPermission();
+}
+
+export async function getNativeDevicePushToken(): Promise<string | null> {
+  const notifications = await getNotificationsModule();
+
+  if (!notifications) {
+    return null;
+  }
+
+  try {
+    const token = await notifications.getDevicePushTokenAsync();
+
+    return token.data;
+  } catch {
+    return null;
+  }
+}
+
 export const expoNotificationScheduler: ReminderNotificationScheduler = {
   async requestPermission() {
     const notifications = await getNotificationsModule();

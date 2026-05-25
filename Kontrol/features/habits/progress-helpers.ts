@@ -31,6 +31,15 @@ export type TodayProgress = {
   todayCompletionRate: number;
 };
 
+export type TodayHabitSummary = {
+  activeHabitCount: number;
+  todayHabitCount: number;
+  completedTodayCount: number;
+  pendingTodayCount: number;
+  completionRate: number;
+  totalCompletions: number;
+};
+
 export type ProgressDashboard = TodayProgress & {
   currentStreak: number;
   bestStreak: number;
@@ -56,6 +65,16 @@ const shortDayLabels: Record<number, string> = {
   4: 'Jue',
   5: 'Vie',
   6: 'Sáb',
+};
+
+const longDayLabels: Record<number, string> = {
+  0: 'domingo',
+  1: 'lunes',
+  2: 'martes',
+  3: 'miércoles',
+  4: 'jueves',
+  5: 'viernes',
+  6: 'sábado',
 };
 
 export function normalizeDateToLocalKey(date: Date | string): string {
@@ -158,12 +177,88 @@ export function isHabitScheduledForDate(habit: HabitRecord, date: Date | string)
     return false;
   }
 
+  // El contrato actual usa 0 = domingo, 1 = lunes, ..., 6 = sábado.
+  // Fallback legacy: hábitos diarios o sin daysOfWeek se tratan como diarios.
   if (habit.frequency === 'daily' || !habit.daysOfWeek?.length) {
     return true;
   }
 
-  // El contrato actual usa 0 = domingo, 1 = lunes, ..., 6 = sábado.
   return habit.daysOfWeek.includes(createLocalDate(dateKey).getDay());
+}
+
+export function isHabitScheduledToday(habit: HabitRecord, today = new Date()): boolean {
+  return isHabitScheduledForDate(habit, today);
+}
+
+export function getActiveHabits<T extends HabitRecord>(habits: T[]): T[] {
+  return habits.filter((habit) => {
+    const state = habit as HabitRecord & { isArchived?: boolean; isDeleted?: boolean };
+
+    return state.isDeleted !== true && state.isArchived !== true;
+  });
+}
+
+export function getHabitsScheduledForDate<T extends HabitRecord>(habits: T[], date: Date | string): T[] {
+  return getActiveHabits(habits).filter((habit) => isHabitScheduledForDate(habit, date));
+}
+
+export function getTodayCompletions(
+  completions: HabitCompletionRecord[],
+  today = new Date(),
+): HabitCompletionRecord[] {
+  const todayKey = getTodayKey(today);
+
+  return completions.filter((completion) => normalizeDateToLocalKey(completion.completedOn) === todayKey);
+}
+
+export function isHabitCompletedToday(
+  habitId: string,
+  completions: HabitCompletionRecord[],
+  today = new Date(),
+): boolean {
+  return getTodayCompletions(completions, today).some((completion) => completion.habitId === habitId);
+}
+
+export function calculateTodaySummary(
+  habits: HabitRecord[],
+  completions: HabitCompletionRecord[],
+  today = new Date(),
+): TodayHabitSummary {
+  const activeHabits = getActiveHabits(habits);
+  const activeHabitIds = new Set(activeHabits.map((habit) => habit.id));
+  const todayHabits = getHabitsScheduledForDate(activeHabits, today);
+  const todayHabitIds = new Set(todayHabits.map((habit) => habit.id));
+  const completedTodayHabitIds = new Set(
+    getTodayCompletions(completions, today)
+      .filter((completion) => todayHabitIds.has(completion.habitId))
+      .map((completion) => completion.habitId),
+  );
+  const totalCompletionKeys = new Set(
+    completions
+      .filter((completion) => activeHabitIds.has(completion.habitId))
+      .map((completion) => `${completion.habitId}:${normalizeDateToLocalKey(completion.completedOn)}`),
+  );
+
+  return {
+    activeHabitCount: activeHabits.length,
+    todayHabitCount: todayHabits.length,
+    completedTodayCount: completedTodayHabitIds.size,
+    pendingTodayCount: Math.max(todayHabits.length - completedTodayHabitIds.size, 0),
+    completionRate: rate(completedTodayHabitIds.size, todayHabits.length),
+    totalCompletions: totalCompletionKeys.size,
+  };
+}
+
+export function getNextScheduledDayLabel(habit: HabitRecord, fromDate = new Date()): string | null {
+  for (let offset = 1; offset <= 7; offset += 1) {
+    const dateKey = addDays(getTodayKey(fromDate), offset);
+
+    if (isHabitScheduledForDate(habit, dateKey)) {
+      return offset === 1 ? 'mañana' : longDayLabels[createLocalDate(dateKey).getDay()];
+    }
+  }
+
+  return null;
 }
 
 function buildCompletionIndex(completions: HabitCompletionRecord[]): Map<string, Set<string>> {

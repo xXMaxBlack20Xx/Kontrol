@@ -63,12 +63,14 @@ test('CP-04 happy path creates a habit with required data and lists it', async (
       accountId: 'account-1',
       name: 'Leer',
       frequency: 'daily',
+      daysOfWeek: [1, 3, 5],
     },
     repository,
   );
 
   assert.equal(habit.name, 'Leer');
   assert.equal(habit.frequency, 'daily');
+  assert.deepEqual(habit.daysOfWeek, [1, 3, 5]);
   assert.deepEqual(await repository.listByAccount('account-1'), [habit]);
 });
 
@@ -81,6 +83,10 @@ test('CP-04 alternate path stores optional habit information', async () => {
       name: 'Leer',
       frequency: 'daily',
       category: 'estudio',
+      color: '#007AFF',
+      daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+      icon: 'menu-book',
+      subcategories: ['Lectura', 'Enfoque'],
       target: 'leer 10 paginas',
       reminderTime: '08:00',
     },
@@ -88,6 +94,10 @@ test('CP-04 alternate path stores optional habit information', async () => {
   );
 
   assert.equal(habit.category, 'estudio');
+  assert.equal(habit.color, '#007AFF');
+  assert.deepEqual(habit.daysOfWeek, [0, 1, 2, 3, 4, 5, 6]);
+  assert.equal(habit.icon, 'menu-book');
+  assert.deepEqual(habit.subcategories, ['Lectura', 'Enfoque']);
   assert.equal(habit.target, 'leer 10 paginas');
   assert.equal(habit.reminderTime, '08:00');
 });
@@ -111,12 +121,49 @@ test('CP-04 failure path rejects missing required habit fields', async () => {
     createHabit(
       {
         accountId: 'account-1',
+        name: 'A',
+        frequency: 'daily',
+      },
+      repository,
+    ),
+    (error) => error instanceof CreateHabitError && error.code === 'NAME_TOO_SHORT',
+  );
+
+  await assert.rejects(
+    createHabit(
+      {
+        accountId: 'account-1',
+        name: 'A'.repeat(61),
+        frequency: 'daily',
+      },
+      repository,
+    ),
+    (error) => error instanceof CreateHabitError && error.code === 'NAME_TOO_LONG',
+  );
+
+  await assert.rejects(
+    createHabit(
+      {
+        accountId: 'account-1',
         name: 'Leer',
         frequency: '',
       },
       repository,
     ),
     (error) => error instanceof CreateHabitError && error.code === 'FREQUENCY_REQUIRED',
+  );
+
+  await assert.rejects(
+    createHabit(
+      {
+        accountId: 'account-1',
+        name: 'Leer',
+        frequency: 'daily',
+        daysOfWeek: [],
+      },
+      repository,
+    ),
+    (error) => error instanceof CreateHabitError && error.code === 'DAYS_OF_WEEK_REQUIRED',
   );
 
   assert.deepEqual(await repository.listByAccount('account-1'), []);
