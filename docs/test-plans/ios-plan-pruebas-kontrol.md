@@ -2,12 +2,15 @@
 title: "Plan de Pruebas - Kontrol"
 source_pdf: "IOS_Plan_Pruebas_Kontrol (2).pdf"
 converted_date: "2026-05-11"
+updated_at: "2026-05-24"
 project: "Kontrol"
 ---
 
 # Plan de Pruebas - Kontrol
 
 > Markdown conversion generated from the uploaded PDF. Page footers/headers were removed where possible; original document wording was preserved.
+
+> **NOTA DE IMPLEMENTACIÓN (2026-05-24):** El plan vigente no usa Microsoft Entra External ID, Azure AD B2C, tenants externos ni App Registration móvil. Las pruebas de autenticación validan el backend propio en Azure Functions con JWT, argon2 y refresh tokens hasheados en Cosmos DB. Ver `docs/architecture/fase-2-backend-autenticacion.md`.
 
 DISEÑO DE UN PLAN DE PRUEBAS
 Etapa Análisis - Diseño de un plan de pruebas
@@ -27,7 +30,9 @@ Instructora                 Dra. Julia Guadalupe Juarez Hernandez
 
 Fecha de elaboración        28 / 04 / 2026
 
-Versión del documento       1.67
+Versión del documento       1.68
+
+Actualización de alcance    21 / 05 / 2026 - Pruebas de arquitectura Azure segura y local-first
 
 ---
 
@@ -71,22 +76,28 @@ metodológico del proyecto.
 
 ### 2.2 Módulos dentro del alcance
 
-- Gestión de cuenta local.
+- Gestión de cuenta y autenticación.
 - Inicio y cierre de sesión.
 - Gestión de hábitos.
 - Registro de cumplimiento diario.
 - Visualización de rachas y progreso.
 - Gestión de recordatorios locales.
 - Configuración general y consulta del aviso de privacidad.
+- Autenticación con Azure Functions (JWT + argon2, autenticación propia).
+- Sincronización local-first mediante Azure Functions y Cosmos DB.
+- Fotos privadas mediante Blob Storage y URLs temporales.
+- Registro de dispositivos y notificaciones remotas mediante Azure Notification Hubs.
+- Monitoreo de backend mediante Application Insights.
 
 ### 2.3 Fuera del alcance del MVP
 
-- Sincronización en la nube.
 - Compartición de hábitos o estadísticas con otros usuarios.
 - Widgets de iOS.
 - Integración con Apple Watch o dispositivos externos.
 - Analítica avanzada predictiva.
 - Funciones sociales.
+- Sincronización multi-dispositivo en tiempo real.
+- Acceso directo desde la app móvil a Cosmos DB, Blob Storage o Notification Hubs mediante llaves privadas.
 
 ---
 
@@ -170,7 +181,21 @@ Kontrol               Aplicación móvil del proyecto, enfocada en el seguimient
 
 Onboarding            Flujo inicial de uso donde el usuario conoce la lógica general de la aplicación o completa información básica.
 
-Persistencia local    Almacenamiento de información directamente en el dispositivo, sin depender de servicios en la nube.
+Persistencia local    Almacenamiento de información directamente en el dispositivo para permitir uso sin conexión.
+
+Local-first           Enfoque donde la app opera localmente y sincroniza con la nube cuando existe conectividad.
+
+Autenticación propia en Azure Functions Servicio de identidad propio (JWT + argon2) para registro, inicio de sesión y emisión de tokens JWT.
+
+Azure Functions       Backend seguro que valida tokens y concentra el acceso a servicios cloud.
+
+Cosmos DB             Base de datos cloud para hábitos, cumplimientos, recordatorios, dispositivos y metadata.
+
+Blob Storage          Servicio de archivos usado para fotos privadas.
+
+Notification Hubs     Servicio para registrar dispositivos y enviar notificaciones push remotas.
+
+SAS temporal          URL firmada con vigencia limitada para subir o consultar archivos privados.
 
 Progreso              Representación visual o numérica del avance del usuario respecto a sus hábitos registrados.
 
@@ -178,7 +203,7 @@ Racha                 Número de periodos consecutivos válidos en los que un h�
 
 Recordatorio          Aviso local programado por el usuario para apoyar el cumplimiento de un hábito.
 
-Postgres              Motor de base de datos local utilizado para almacenar la información del sistema en el dispositivo.
+Persistencia local Expo-compatible Mecanismo local compatible con Expo para sesión, datos de hábitos y pendientes de sincronización.
 
 Vista de detalle      Pantalla que presenta información específica de un hábito individual, incluyendo estado, historial y racha.
 
@@ -186,17 +211,16 @@ Vista de detalle      Pantalla que presenta información específica de un hábi
 
 ## 6. Objetivos de pruebas por módulo
 
-## 1. Gestión de cuenta local
-Validar que el sistema permita registrar una cuenta local únicamente cuando el usuario capture un correo electrónico con formato válido, una
-contraseña con longitud mínima de 8 caracteres y acepte explícitamente el aviso de privacidad antes de confirmar el registro. Asimismo, se deberá
-comprobar que el sistema rechace registros cuando existan campos obligatorios vacíos, correos previamente registrados o datos que no cumplan con
-las reglas de validación establecidas.
+## 1. Gestión de cuenta y autenticación
+Validar que el sistema permita registrar e iniciar el flujo de cuenta mediante el backend de autenticación propio de Azure Functions (JWT + argon2) cuando el usuario capture un correo electrónico
+con formato válido, una contraseña válida y acepte explícitamente el aviso de privacidad antes de confirmar el registro.
+Asimismo, se deberá comprobar que la app no almacene contraseñas y que Azure Functions valide tokens antes de permitir acceso a datos privados.
 
 ## 2. Inicio y cierre de sesión
 
-Validar que el sistema autentique al usuario únicamente cuando las credenciales ingresadas coincidan con una cuenta previamente almacenada en la
-base de datos local, permitiendo el acceso a la pantalla principal en un tiempo máximo de 2 segundos. También se deberá verificar que el cierre de
-sesión invalide correctamente la sesión activa y restrinja el acceso posterior a pantallas privadas del sistema.
+Validar que el sistema autentique al usuario mediante el backend propio de Azure Functions (JWT + argon2) y que la app reciba un token válido para acceder a Azure Functions,
+permitiendo el acceso a la pantalla principal bajo condiciones normales de uso. También se deberá verificar que el cierre de sesión invalide correctamente
+la sesión activa y restrinja el acceso posterior a pantallas privadas del sistema.
 
 ## 3. Gestión de hábitos
 
@@ -230,27 +254,51 @@ Validar que el usuario pueda acceder a la pantalla de configuración y consultar
 de un tiempo máximo de 2 segundos. Adicionalmente, se deberá verificar que el sistema muestre un mensaje informativo cuando el contenido no se
 encuentre disponible temporalmente.
 
+## 8. Autenticación Azure (backend propio JWT + argon2)
+
+Validar que la app Expo pueda registrarse e iniciar sesión mediante el backend propio de Azure Functions, recibir un access token JWT y consumir endpoints protegidos de
+Azure Functions. También se deberá comprobar que Azure Functions rechace solicitudes sin token, con token inválido o expirado.
+
+## 9. Sincronización local-first con Azure Functions y Cosmos DB
+
+Validar que la app conserve operaciones locales cuando no exista conectividad y que, al recuperar conexión, sincronice hábitos, cumplimientos y progreso
+mediante Azure Functions sin permitir acceso entre usuarios distintos. También se deberá comprobar que Cosmos DB utilice documentos particionados por
+`/userId`.
+
+## 10. Fotos privadas con Blob Storage
+
+Validar que la app solicite una URL temporal a Azure Functions, suba la foto al contenedor privado de Blob Storage y registre metadata en Cosmos DB.
+También se deberá comprobar que el contenedor no tenga acceso público anónimo y que las URLs temporales expiren.
+
+## 11. Notificaciones remotas con Notification Hubs
+
+Validar que la app obtenga token nativo APNs o FCM mediante `getDevicePushTokenAsync`, registre el dispositivo en Azure Functions y permita enviar una
+notificación de prueba desde el backend. Estas pruebas deberán ejecutarse en development build o build nativa, no en Expo Go.
+
+## 12. Monitoreo de backend
+
+Validar que Azure Functions exponga `GET /api/health` y registre errores o eventos relevantes en Application Insights sin incluir secretos, contraseñas,
+connection strings ni tokens completos.
+
 ## 7. Alcance de pruebas por módulo
 
-## 1. Gestión de cuenta local
+## 1. Gestión de cuenta y autenticación
 
-Las pruebas de este módulo abarcan la validación del formato de correo electrónico, la longitud mínima permitida para contraseñas, la verificación de
-campos obligatorios, la detección de cuentas duplicadas, la aceptación obligatoria del aviso de privacidad y el almacenamiento local de la cuenta
-registrada. Este módulo no contempla funcionalidades de recuperación de contraseña, autenticación mediante servicios externos ni sincronización de
-cuentas con servicios en la nube.
+Las pruebas de este módulo abarcan la validación del formato de correo electrónico, la aceptación obligatoria del aviso de privacidad y el alta de usuario
+mediante el backend propio de Azure Functions (JWT + argon2). La contraseña no deberá guardarse en texto plano en Cosmos DB ni en persistencia local de la app; solo se guarda su hash con argon2 en `authUsers`.
 
 ## 2. Inicio y cierre de sesión
 
-Las pruebas de este módulo incluyen autenticación con credenciales válidas, rechazo de credenciales inválidas, conservación de sesión activa entre
-aperturas de la aplicación, cierre manual de sesión y redirección automática a la pantalla de inicio de sesión después del cierre. No forman parte del
-alcance mecanismos de autenticación biométrica ni sincronización de sesiones entre múltiples dispositivos.
+Las pruebas de este módulo incluyen autenticación con credenciales válidas mediante Azure Functions (JWT + argon2), rechazo de credenciales inválidas por el backend,
+conservación segura de sesión/token entre aperturas de la aplicación, cierre manual de sesión y redirección automática a la pantalla de
+inicio de sesión después del cierre. No forman parte del alcance mecanismos de autenticación biométrica ni sincronización multi-dispositivo en tiempo real.
 
 ## 3. Gestión de hábitos
 
 Este módulo contempla pruebas relacionadas con creación de hábitos, edición de atributos permitidos como nombre, frecuencia, categoría, meta y
 recordatorio, así como eliminación de hábitos mediante confirmación explícita del usuario. También incluye validación de campos obligatorios,
-actualización inmediata de la interfaz y persistencia local de datos. Quedan excluidas funcionalidades de sincronización externa y compartición de
-hábitos con otros usuarios.
+actualización inmediata de la interfaz, persistencia local de datos y sincronización posterior mediante Azure Functions cuando exista conectividad.
+Queda excluida la compartición de hábitos con otros usuarios.
 
 ---
 
@@ -268,9 +316,8 @@ significativa. No forman parte del alcance funcionalidades de analítica predict
 
 ## 6. Gestión de recordatorios locales
 
-Las pruebas abarcan creación, edición y eliminación de recordatorios, validación de horarios permitidos, verificación de permisos de notificaciones y
-persistencia local de la configuración realizada por el usuario. Se excluyen del alcance notificaciones push remotas y sincronización de recordatorios
-con servicios externos.
+Las pruebas abarcan creación, edición y eliminación de recordatorios locales, validación de horarios permitidos, verificación de permisos de notificaciones,
+persistencia local y registro cloud del dispositivo cuando se habiliten notificaciones remotas mediante Notification Hubs.
 
 ## 7. Configuración general y consulta del aviso de privacidad
 
@@ -282,11 +329,15 @@ cuenta.
 
 ## 8. Tabla de Pruebas
 
+Nota de actualización 1.68 (2026-05-24): los casos CP-01 y CP-02 quedan actualizados al flujo de autenticación propia en Azure Functions (JWT + argon2). La app no debe guardar contraseñas; únicamente puede
+conservar sesión/token y datos locales necesarios para operar con enfoque local-first.
+Ver `docs/architecture/fase-2-backend-autenticacion.md`.
+
 Resultado
 ID                   Caso de Pruebas                            Entrada               Precondiciones                    Resultado esperado                               Estado
 obtenido
 
-CP-01: Crear cuenta local
+CP-01: Crear cuenta (autenticación propia Azure Functions)
 
 Happy path - Registrar cuenta con datos válidos     Correo:                El usuario no tiene una        Happy path                               Pendiente      Pendiente
 CP-01                                                        usuario@correo.com     sesión activa.                                                          de ejecución
@@ -294,11 +345,11 @@ CP-01                                                        usuario@correo.com 
 2. El usuario selecciona la opción Crear cuenta.    Contraseña:            El correo ingresado no se      la pantalla de registro.
 3. El sistema muestra el formulario de registro.    Kontrol123             encuentra        registrado
 4. El usuario captura su correo electrónico.                              previamente        en     la   Cuando ingresa un correo válido, una
-5. El usuario captura su contraseña.                Aviso de privacidad:   persistencia local.            contraseña válida, acepta el aviso de
+5. El usuario captura su contraseña.                Aviso de privacidad:   tabla `authUsers`.             contraseña válida, acepta el aviso de
 6. El usuario acepta el aviso de privacidad.        aceptado                                              privacidad y confirma el registro.
 7. El usuario presiona el botón Registrar cuenta.                          El formulario de registro se
 8. El sistema procesa la solicitud de registro.                            encuentra disponible.          Entonces el sistema deberá crear la
-cuenta local y permitir que el usuario
+cuenta mediante Azure Functions y permitir que el usuario
 continúe hacia el acceso inicial de la
 aplicación.
 
@@ -312,7 +363,7 @@ incorrecto o deja un campo incompleto.                                     El si
 3. El sistema muestra la observación                Segundo intento:      campos antes de confirmar      a confirmar el registro.
 correspondiente.                                                           el registro final.
 4. El usuario corrige el dato señalado.             Correo:                                               Entonces el sistema deberá crear la
-5. El usuario acepta el aviso de privacidad.        usuario@correo.com                                    cuenta local si todos los datos ya
+5. El usuario acepta el aviso de privacidad.        usuario@correo.com                                    cuenta si todos los datos ya
 6. El usuario presiona nuevamente Registrar         Contraseña:                                           cumplen con las condiciones
 cuenta.                                             Kontrol123                                            requeridas.
 7. El sistema procesa la solicitud corregida.      Aviso de privacidad:
@@ -331,13 +382,13 @@ acepta el aviso de privacidad.                     privacidad no            avis
 3. El usuario presiona Registrar cuenta.           aceptado.                                              privacidad.
 ## 4. El sistema valida los datos antes de crear la
 cuenta.                                            Caso 4: correo ya                                       Entonces el sistema no deberá crear
-registrado.                                             la cuenta local y deberá mostrar la
+registrado.                                             la cuenta y deberá mostrar la
 causa correspondiente.
 
 CP-02: Iniciar sesión
 
-CP-02     Happy path - Iniciar sesión con credenciales       Correo:                  Existe una cuenta local        Happy path                                 Pendiente      Pendiente
-válidas                                            usuario@correo.com       registrada con el correo y                                                de ejecución
+CP-02     Happy path - Iniciar sesión con credenciales       Correo:                  Existe una cuenta registrada    Happy path                                 Pendiente      Pendiente
+válidas                                            usuario@correo.com       con el correo y contraseña                                               de ejecución
 la contraseña ingresados.      Dado que el usuario se encuentra en
 1. El usuario abre la aplicación.                  Contraseña:                                             la pantalla de inicio de sesión.
 2. El sistema muestra la pantalla de inicio de     Kontrol123@              El usuario no tiene una
@@ -371,7 +422,7 @@ botón de Iniciar sesión.
 ## 8. El sistema valida las credenciales
 corregidas y permite el acceso.
 
-Fracaso - Intentar iniciar sesión con credenciales    Correo:                Existe una cuenta local       Fracaso                                   Pendiente      Pendiente
+Fracaso - Intentar iniciar sesión con credenciales    Correo:                Existe una cuenta registrada  Fracaso                                   Pendiente      Pendiente
 incorrectas                                           usuario@correo.com     registrada.                                                             de ejecución
 Dado que el usuario se encuentra en
 1. El usuario se encuentra en la pantalla de inicio   Contraseña:            El usuario no tiene una       la pantalla de inicio de sesión.
@@ -396,7 +447,7 @@ configuración.                                                                 
 3. El usuario selecciona la opción Cerrar sesión.                                                          acción.
 ## 4. El sistema muestra una confirmación.
 5. El usuario confirma el cierre de sesión.                                                                Entonces el sistema deberá finalizar
-6. El sistema procesa la solicitud.                                                                       la sesión y mostrar la pantalla de
+6. El sistema procesa la solicitud y revoca el refresh token activo.                                      la sesión y mostrar la pantalla de
 inicio de sesión.
 
 Alterno - Cancelar cierre de sesión antes de          Acción: cerrar         El usuario tiene una sesión   Alterno                                   Pendiente      Pendiente
@@ -763,12 +814,106 @@ Entonces el sistema deberá mostrar
 un mensaje informando que el aviso
 no puede visualizarse temporalmente.
 
+CP-12: Autenticación con Azure Functions (JWT + argon2)
+
+CP-12 Happy path - Iniciar sesión y consumir endpoint protegido
+Entrada: credenciales válidas (email + password), `EXPO_PUBLIC_API_BASE_URL` configurado.
+Precondiciones: Azure Functions desplegado, Cosmos DB con contenedores authUsers/users/refreshTokens.
+Resultado esperado: `POST /api/auth/login` devuelve accessToken + refreshToken, `GET /api/me` con el token devuelve el userId del usuario, `POST /api/auth/refresh` renueva el accessToken y `POST /api/auth/logout` revoca el refreshToken.
+Estado: Pendiente de ejecución.
+
+CP-12 Alterno - Sesión vigente
+Entrada: sesión/token válido guardado de forma segura.
+Precondiciones: el usuario inició sesión previamente y el token aún es válido.
+Resultado esperado: la app conserva acceso a pantallas privadas y puede llamar endpoints protegidos sin solicitar credenciales nuevamente.
+Estado: Pendiente de ejecución.
+
+CP-12 Fracaso - Request sin token o con token inválido
+Entrada: solicitud HTTP sin Authorization Bearer o con token inválido.
+Precondiciones: endpoint protegido disponible.
+Resultado esperado: Azure Functions responde `401 Unauthorized` y no consulta Cosmos DB.
+Estado: Pendiente de ejecución.
+
+CP-13: Sincronización local-first con Azure Functions y Cosmos DB
+
+CP-13 Happy path - Sincronizar hábitos
+Entrada: hábitos locales creados o editados, access token válido y `EXPO_PUBLIC_API_BASE_URL` configurado.
+Precondiciones: Cosmos DB serverless disponible con database `kontrol-db` y contenedores con partition key `/userId`.
+Resultado esperado: `POST /api/sync/habits` guarda datos autorizados en Cosmos DB y `GET /api/habits` devuelve únicamente hábitos del usuario autenticado.
+Estado: Pendiente de ejecución.
+
+CP-13 Alterno - Operación sin internet
+Entrada: creación, edición, eliminación o cumplimiento realizado sin conectividad.
+Precondiciones: app con persistencia local disponible.
+Resultado esperado: la app conserva la operación localmente, permite seguir usando Kontrol y sincroniza el pendiente cuando regresa internet.
+Estado: Pendiente de ejecución.
+
+CP-13 Fracaso - Intento de acceso a datos de otro usuario
+Entrada: solicitud con userId distinto al del token o recurso ajeno.
+Precondiciones: existen datos de al menos dos usuarios en Cosmos DB.
+Resultado esperado: Azure Functions rechaza la operación y no devuelve datos del otro usuario.
+Estado: Pendiente de ejecución.
+
+CP-14: Fotos privadas con Blob Storage
+
+CP-14 Happy path - Subir foto con SAS temporal
+Entrada: imagen válida, access token válido y solicitud a `POST /api/photos/upload-url`.
+Precondiciones: Storage Account disponible, contenedor `user-photos` privado y Azure Functions con permisos/configuración de Storage.
+Resultado esperado: Azure Functions genera una URL temporal, la app sube la foto, `POST /api/photos/metadata` guarda metadata en Cosmos DB y el contenedor sigue privado.
+Estado: Pendiente de ejecución.
+
+CP-14 Alterno - Consultar metadata de foto existente
+Entrada: `photoId` perteneciente al usuario autenticado.
+Precondiciones: existe metadata válida en Cosmos DB y blob asociado.
+Resultado esperado: `GET /api/photos/{photoId}` devuelve datos autorizados o una URL temporal de lectura sin exponer acceso público permanente.
+Estado: Pendiente de ejecución.
+
+CP-14 Fracaso - Acceso a foto ajena o SAS expirada
+Entrada: `photoId` de otro usuario o URL temporal vencida.
+Precondiciones: existen fotos registradas en Blob Storage y Cosmos DB.
+Resultado esperado: Azure Functions rechaza el acceso ajeno y Blob Storage no permite usar una URL temporal vencida.
+Estado: Pendiente de ejecución.
+
+CP-15: Registro de dispositivo y notificación remota
+
+CP-15 Happy path - Registrar token nativo
+Entrada: platform `ios` o `android`, pushProvider `apns` o `fcmv1`, nativePushToken obtenido con `getDevicePushTokenAsync`.
+Precondiciones: permisos de notificación concedidos, development build o build nativa, Notification Hubs configurado.
+Resultado esperado: `POST /api/devices/register` registra la instalación en Notification Hubs y guarda metadata del dispositivo en Cosmos DB.
+Estado: Pendiente de ejecución.
+
+CP-15 Alterno - Enviar notificación de prueba
+Entrada: usuario con dispositivo registrado y solicitud a `POST /api/notifications/send-test`.
+Precondiciones: Notification Hubs configurado con APNs o FCM v1.
+Resultado esperado: el backend envía una notificación de prueba al dispositivo registrado.
+Estado: Pendiente de ejecución.
+
+CP-15 Fracaso - Uso de ExpoPushToken o ejecución en Expo Go
+Entrada: ExpoPushToken o entorno Expo Go.
+Precondiciones: flujo de Notification Hubs seleccionado como proveedor de push remoto.
+Resultado esperado: el sistema no registra ExpoPushToken como token principal y documenta que la validación debe realizarse con token nativo en development build o build nativa.
+Estado: Pendiente de ejecución.
+
+CP-16: Health check y monitoreo de backend
+
+CP-16 Happy path - Validar disponibilidad
+Entrada: solicitud a `GET /api/health`.
+Precondiciones: Azure Functions desplegado.
+Resultado esperado: el endpoint responde estado saludable y queda evidencia técnica en Application Insights.
+Estado: Pendiente de ejecución.
+
+CP-16 Fracaso - Error registrado sin secretos
+Entrada: solicitud inválida a un endpoint protegido.
+Precondiciones: Application Insights configurado.
+Resultado esperado: el error se registra con endpoint, código de estado y hora aproximada, sin contraseñas, connection strings, llaves privadas ni tokens completos.
+Estado: Pendiente de ejecución.
+
 ## 9. Matriz de trazabilidad CP/Requerimiento
 
 CP / Requerimiento    RF-01        RF-02        RF-03        RF-04         RF-05         RF-06        RF-07         RF-08         RF-09         RF-10        RF-11
 
 CP-01: Crear
-cuenta local          ✓
+cuenta (Azure Functions) ✓
 CP-02: Iniciar
 sesión                             ✓
 CP-03: Cerrar
@@ -795,6 +940,23 @@ recordatorio local                                                              
 CP-11: Consultar
 aviso de privacidad                                                                                                                             ✓
 
+CP / Requerimiento cloud    RF-12        RF-13        RF-14        RF-15        RF-16
+
+CP-12: Autenticación
+Azure Functions (JWT+argon2) ✓
+
+CP-13: Sincronización
+local-first Azure                        ✓
+
+CP-14: Fotos privadas
+Blob Storage                                          ✓
+
+CP-15: Dispositivo y
+notificación remota                                                ✓
+
+CP-16: Health check y
+monitoreo backend                                                               ✓
+
 ### 9.1 Justificación breve de la matriz
 
 La matriz demuestra que cada caso de prueba está vinculado directamente con al menos un requerimiento funcional del sistema. Esto permite verificar
@@ -819,9 +981,11 @@ La tabla de pruebas organiza cada caso en tres escenarios: Happy path, Alterno y
 principal, una variación válida que guía al usuario hacia el resultado correcto y una condición inválida donde el sistema debe impedir la
 acción. Con ello, los casos de prueba resultan más claros, verificables e inequívocos.
 
-También se verificó que el alcance del documento se mantenga alineado con el MVP de Kontrol. Las pruebas cubren gestión de cuenta,
-inicio y cierre de sesión, gestión de hábitos, cumplimiento diario, rachas, progreso, recordatorios locales y aviso de privacidad, sin incluir
-funciones fuera de alcance como sincronización en la nube, widgets, funciones sociales o analítica avanzada.
+También se verificó que el alcance del documento se mantenga alineado con el plan actualizado de Kontrol. Las pruebas cubren gestión de cuenta,
+inicio y cierre de sesión, gestión de hábitos, cumplimiento diario, rachas, progreso, recordatorios locales, aviso de privacidad, autenticación con
+Azure Functions (JWT + argon2), sincronización cloud local-first, fotos privadas, notificaciones remotas y monitoreo de backend. Permanecen fuera de alcance
+widgets, funciones sociales, analítica avanzada, sincronización multi-dispositivo en tiempo real y acceso directo desde la app móvil a servicios Azure
+con llaves privadas.
 
 La matriz de trazabilidad confirma que todos los casos de prueba están vinculados con al menos un requerimiento funcional. Algunos
 casos cubren más de un RF porque ciertas acciones afectan varias partes del sistema; por ejemplo, marcar un hábito como completado

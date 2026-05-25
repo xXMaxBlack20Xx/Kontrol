@@ -7,8 +7,10 @@ import { AppHeader } from '@/components/ui/app-header';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { Card } from '@/components/ui/card';
 import { FeedbackMessage, SelectPill, TextInputField } from '@/components/ui/form';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenContainer } from '@/components/ui/screen-container';
-import { spacing } from '@/components/ui/theme';
+import { gradients, spacing } from '@/components/ui/theme';
+import { useTheme } from '@/components/ui/theme-context';
 import { useAuth } from '@/features/account/auth-context';
 import {
   createHabit,
@@ -16,7 +18,7 @@ import {
   createHabitErrorMessages,
   editHabit,
 } from '@/features/habits/habit';
-import { fileHabitRepository } from '@/features/habits/local-habit-repository';
+import { remoteHabitRepository } from '@/features/habits/remote-habit-repository';
 import { expoNotificationScheduler } from '@/features/reminders/expo-notification-scheduler';
 import { fileReminderRepository } from '@/features/reminders/local-reminder-repository';
 import {
@@ -25,10 +27,13 @@ import {
   saveHabitReminder,
   validateReminderTime,
 } from '@/features/reminders/reminder';
+import { syncRemoteReminder } from '@/features/reminders/remote-reminder-service';
 
 export default function CreateHabitScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { colors, isDark } = useTheme();
+  const styles = getStyles(colors, isDark);
   const [habitName, setHabitName] = useState('');
   const [habitFrequency, setHabitFrequency] = useState('daily');
   const [habitCategory, setHabitCategory] = useState('');
@@ -75,7 +80,7 @@ export default function CreateHabitScreen() {
           reminderTime: '',
           target: habitTarget,
         },
-        fileHabitRepository,
+        remoteHabitRepository,
       );
 
       if (habitReminderTime.trim()) {
@@ -91,7 +96,8 @@ export default function CreateHabitScreen() {
             expoNotificationScheduler,
           );
 
-          habit = await editHabit(habit, { reminderTime: reminder.time }, fileHabitRepository);
+          syncRemoteReminder({ habitId: habit.id, habitName: habit.name, time: reminder.time }).catch(() => undefined);
+          habit = await editHabit(habit, { reminderTime: reminder.time }, remoteHabitRepository);
         } catch (error) {
           setIsSuccess(false);
           setMessage(`Hábito creado sin recordatorio. ${getReminderMessage(error)}`);
@@ -119,8 +125,22 @@ export default function CreateHabitScreen() {
     return <SessionLoadingScreen />;
   }
 
+  const activeGradient = isDark ? gradients.blueScreenDark : gradients.blueScreenLight;
+
   return (
-    <ScreenContainer contentStyle={styles.content} edges={['top']} keyboardAvoiding>
+    <LinearGradient
+      colors={[...activeGradient.colors]}
+      locations={[...activeGradient.locations]}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+      style={styles.gradientRoot}
+    >
+      <ScreenContainer
+        style={{ backgroundColor: 'transparent' }}
+        contentStyle={styles.content}
+        edges={['top']}
+        keyboardAvoiding
+      >
       <AppHeader
         backLabel="Hábitos"
         description="Define una acción diaria sencilla para empezar a medirla."
@@ -165,13 +185,18 @@ export default function CreateHabitScreen() {
           title="Guardar hábito"
         />
       </Card>
-    </ScreenContainer>
+      </ScreenContainer>
+    </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
+  gradientRoot: {
+    flex: 1,
+  },
   content: {
     gap: spacing.lg,
+    paddingBottom: spacing.lg,
   },
   form: {
     gap: spacing.lg,

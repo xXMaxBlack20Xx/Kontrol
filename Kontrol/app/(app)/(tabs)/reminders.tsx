@@ -6,17 +6,22 @@ import { SessionLoadingScreen } from '@/components/session-loading-screen';
 import { AppHeader } from '@/components/ui/app-header';
 import { DestructiveButton, SecondaryButton } from '@/components/ui/buttons';
 import { Card } from '@/components/ui/card';
+import { LinearGradient } from 'expo-linear-gradient';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FeedbackMessage } from '@/components/ui/form';
 import { ScreenContainer } from '@/components/ui/screen-container';
-import { colors, spacing } from '@/components/ui/theme';
+import { gradients, spacing, typography } from '@/components/ui/theme';
+import { useTheme } from '@/components/ui/theme-context';
 import { useAuth } from '@/features/account/auth-context';
 import { editHabit, type HabitRecord } from '@/features/habits/habit';
-import { fileHabitRepository } from '@/features/habits/local-habit-repository';
+import { remoteHabitRepository } from '@/features/habits/remote-habit-repository';
 import { habitEditHref } from '@/features/navigation/routes';
 import { expoNotificationScheduler } from '@/features/reminders/expo-notification-scheduler';
 import { fileReminderRepository } from '@/features/reminders/local-reminder-repository';
 import { deleteHabitReminder, type ReminderRecord } from '@/features/reminders/reminder';
+import { deleteRemoteReminderByHabitId, listRemoteReminders } from '@/features/reminders/remote-reminder-service';
+
+const remoteOnlyNotificationId = 'Metadata remota sin notificación local';
 
 type ReminderListItem = {
   habit: HabitRecord | null;
@@ -26,6 +31,8 @@ type ReminderListItem = {
 export default function RemindersScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { colors, isDark } = useTheme();
+  const styles = getStyles(colors, isDark);
   const [items, setItems] = useState<ReminderListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
@@ -43,10 +50,24 @@ export default function RemindersScreen() {
     setMessage(null);
 
     try {
-      const [habits, reminders] = await Promise.all([
-        fileHabitRepository.listByAccount(user.accountId),
+      const [habits, localReminders, remoteReminders] = await Promise.all([
+        remoteHabitRepository.listByAccount(user.accountId),
         fileReminderRepository.listByAccount(user.accountId),
+        listRemoteReminders(),
       ]);
+      const localHabitIds = new Set(localReminders.map((reminder) => reminder.habitId));
+      const normalizedRemoteReminders: ReminderRecord[] = remoteReminders
+        .filter((reminder) => !localHabitIds.has(reminder.habitId))
+        .map((reminder) => ({
+          id: reminder.id,
+          accountId: reminder.userId,
+          habitId: reminder.habitId,
+          time: reminder.time,
+          notificationId: remoteOnlyNotificationId,
+          createdAt: reminder.createdAt,
+          updatedAt: reminder.updatedAt,
+        }));
+      const reminders = [...localReminders, ...normalizedRemoteReminders];
 
       setItems(
         reminders.map((reminder) => ({
@@ -57,7 +78,7 @@ export default function RemindersScreen() {
     } catch {
       setItems([]);
       setIsSuccess(false);
-      setMessage('No se pudieron cargar tus recordatorios locales. Intenta nuevamente.');
+      setMessage('No se pudieron cargar tus recordatorios. Intenta nuevamente.');
     } finally {
       setIsLoading(false);
     }
@@ -86,14 +107,19 @@ export default function RemindersScreen() {
     setIsSuccess(false);
 
     try {
-      await deleteHabitReminder(
-        { habitId: item.reminder.habitId, confirmed: true },
-        fileReminderRepository,
-        expoNotificationScheduler,
-      );
+      if (item.reminder.notificationId === remoteOnlyNotificationId) {
+        await deleteRemoteReminderByHabitId(item.reminder.habitId);
+      } else {
+        await deleteHabitReminder(
+          { habitId: item.reminder.habitId, confirmed: true },
+          fileReminderRepository,
+          expoNotificationScheduler,
+        );
+        deleteRemoteReminderByHabitId(item.reminder.habitId).catch(() => undefined);
+      }
 
       if (item.habit) {
-        await editHabit(item.habit, { reminderTime: '' }, fileHabitRepository);
+        await editHabit(item.habit, { reminderTime: '' }, remoteHabitRepository);
       }
 
       setItems((currentItems) =>
@@ -113,11 +139,23 @@ export default function RemindersScreen() {
     return <SessionLoadingScreen />;
   }
 
+  const activeGradient = isDark ? gradients.blueScreenDark : gradients.blueScreenLight;
+
   return (
-    <ScreenContainer contentStyle={styles.content} edges={['top']}>
+    <LinearGradient
+      colors={[...activeGradient.colors]}
+      locations={[...activeGradient.locations]}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+      style={styles.gradientRoot}
+    >
+      <ScreenContainer
+        style={{ backgroundColor: 'transparent' }}
+        contentStyle={styles.content}
+        edges={['top']}
+      >
       <AppHeader
         description="Revisa las notificaciones locales configuradas para tus hábitos diarios."
-        eyebrow="Kontrol"
         title="Recordatorios"
       />
 
@@ -157,7 +195,7 @@ export default function RemindersScreen() {
               <Text style={styles.habitName}>{habit?.name ?? 'Hábito no disponible'}</Text>
               <Text style={styles.time}>{item.reminder.time}</Text>
             </View>
-            <Text style={styles.habitDetail}>Notificación local: {item.reminder.notificationId}</Text>
+            <Text style={styles.habitDetail}>Notificación: {item.reminder.notificationId}</Text>
 
             <View style={styles.actions}>
               {habit ? (
@@ -181,11 +219,15 @@ export default function RemindersScreen() {
           </Card>
         );
       })}
-    </ScreenContainer>
+      </ScreenContainer>
+    </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
+  gradientRoot: {
+    flex: 1,
+  },
   content: {
     gap: spacing.lg,
   },
@@ -197,6 +239,7 @@ const styles = StyleSheet.create({
     minHeight: 54,
   },
   loadingText: {
+    fontFamily: typography.fontFamily,
     color: colors.textSecondary,
     fontSize: 15,
     fontWeight: '600',
@@ -211,17 +254,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   habitName: {
+    fontFamily: typography.fontFamily,
     color: colors.textPrimary,
     flex: 1,
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: typography.weights.heavy,
+    letterSpacing: -0.4,
   },
   time: {
+    fontFamily: typography.fontFamilyRound,
     color: colors.textPrimary,
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: typography.weights.heavy,
+    letterSpacing: -0.4,
   },
   habitDetail: {
+    fontFamily: typography.fontFamily,
     color: colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,

@@ -1,7 +1,8 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, spacing } from './theme';
+import { spacing, typography } from './theme';
+import { useTheme } from './theme-context';
 
 type AppHeaderProps = {
   backLabel?: string;
@@ -9,21 +10,39 @@ type AppHeaderProps = {
   eyebrow?: string;
   onBack?: () => void;
   title: string;
+  textColor?: string;
+  descriptionColor?: string;
+  eyebrowColor?: string;
 };
 
-export function AppHeader({ backLabel, description, eyebrow, onBack, title }: AppHeaderProps) {
+export function AppHeader({
+  backLabel,
+  description,
+  eyebrow,
+  onBack,
+  title,
+  textColor,
+  descriptionColor,
+  eyebrowColor,
+}: AppHeaderProps) {
+  const { colors } = useTheme();
+
   return (
     <View style={styles.header}>
       {onBack && backLabel ? (
         <Pressable onPress={onBack} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
-          <MaterialIcons color={colors.textPrimary} name="arrow-back-ios-new" size={18} />
-          <Text style={styles.backButtonText}>{backLabel}</Text>
+          <MaterialIcons color={textColor ?? colors.textPrimary} name="arrow-back-ios-new" size={18} />
+          <Text style={[styles.backButtonText, { color: colors.textPrimary }, textColor ? { color: textColor } : null]}>{backLabel}</Text>
         </Pressable>
       ) : null}
 
-      {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-      <Text style={styles.title}>{title}</Text>
-      {description ? <Text style={styles.description}>{description}</Text> : null}
+      {eyebrow ? <Text style={[styles.eyebrow, { color: colors.textSecondary }, eyebrowColor ? { color: eyebrowColor } : null]}>{eyebrow}</Text> : null}
+      <Text style={[styles.title, { color: colors.textPrimary }, textColor ? { color: textColor } : null]}>{title}</Text>
+      {description ? (
+        <Text style={[styles.description, { color: colors.textSecondary }, descriptionColor ? { color: descriptionColor } : null]}>
+          {description}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -43,23 +62,24 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
   backButtonText: {
-    color: colors.textPrimary,
+    fontFamily: typography.fontFamily,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: typography.weights.semibold,
   },
   eyebrow: {
-    color: colors.textSecondary,
+    fontFamily: typography.fontFamily,
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: typography.weights.semibold,
   },
   title: {
-    color: colors.textPrimary,
+    fontFamily: typography.fontFamily,
     fontSize: 36,
-    fontWeight: '800',
+    fontWeight: typography.weights.heavy,
     lineHeight: 41,
+    letterSpacing: typography.letterSpacing.largeTitle,
   },
   description: {
-    color: colors.textSecondary,
+    fontFamily: typography.fontFamily,
     fontSize: 17,
     lineHeight: 25,
   },

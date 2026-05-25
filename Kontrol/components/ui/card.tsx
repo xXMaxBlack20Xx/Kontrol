@@ -1,7 +1,8 @@
 import { PropsWithChildren } from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
-import { colors, radius, shadows, spacing } from './theme';
+import { radius, spacing } from './theme';
+import { useTheme } from './theme-context';
 
 type CardProps = PropsWithChildren<{
   muted?: boolean;
@@ -9,20 +10,34 @@ type CardProps = PropsWithChildren<{
 }>;
 
 export function Card({ children, muted = false, style }: CardProps) {
-  return <View style={[styles.card, muted && styles.muted, style]}>{children}</View>;
+  const { colors } = useTheme();
+
+  return (
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+        },
+        muted && { backgroundColor: colors.surfaceMuted },
+        style,
+      ]}>
+      {children}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.xl,
+    borderRadius: radius.xxl,
     borderWidth: 1,
-    gap: spacing.md,
-    padding: spacing.lg,
-    ...shadows.subtle,
-  },
-  muted: {
-    backgroundColor: colors.surfaceMuted,
+    gap: spacing.lg,
+    padding: spacing.xl,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.04,
+    shadowRadius: 24,
+    elevation: 4,
   },
 });

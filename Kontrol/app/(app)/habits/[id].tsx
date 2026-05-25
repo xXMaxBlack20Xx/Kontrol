@@ -8,8 +8,10 @@ import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FeedbackMessage } from '@/components/ui/form';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenContainer } from '@/components/ui/screen-container';
-import { colors, radius, spacing } from '@/components/ui/theme';
+import { gradients, radius, spacing, typography } from '@/components/ui/theme';
+import { useTheme } from '@/components/ui/theme-context';
 import { useAuth } from '@/features/account/auth-context';
 import {
   buildHabitDetailSummary,
@@ -19,8 +21,8 @@ import {
   type HabitDetailSummary,
 } from '@/features/habits/completion';
 import type { HabitRecord } from '@/features/habits/habit';
-import { fileCompletionRepository } from '@/features/habits/local-completion-repository';
-import { fileHabitRepository } from '@/features/habits/local-habit-repository';
+import { remoteCompletionRepository } from '@/features/habits/remote-completion-repository';
+import { remoteHabitRepository } from '@/features/habits/remote-habit-repository';
 import { habitEditHref } from '@/features/navigation/routes';
 import { fileReminderRepository } from '@/features/reminders/local-reminder-repository';
 import type { ReminderRecord } from '@/features/reminders/reminder';
@@ -29,6 +31,8 @@ export default function HabitDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { user } = useAuth();
+  const { colors, isDark } = useTheme();
+  const styles = getStyles(colors, isDark);
   const habitId = Array.isArray(id) ? id[0] : id;
   const [habitDetail, setHabitDetail] = useState<HabitDetailSummary | null>(null);
   const [habit, setHabit] = useState<HabitRecord | null>(null);
@@ -52,8 +56,8 @@ export default function HabitDetailScreen() {
 
     try {
       const [storedHabits, completions, storedReminder] = await Promise.all([
-        fileHabitRepository.listByAccount(user.accountId),
-        fileCompletionRepository.listByHabit(habitId),
+        remoteHabitRepository.listByAccount(user.accountId),
+        remoteCompletionRepository.listByHabit(habitId),
         fileReminderRepository.findByHabitId(habitId),
       ]);
       const selectedHabit = storedHabits.find((currentHabit) => currentHabit.id === habitId) ?? null;
@@ -92,8 +96,8 @@ export default function HabitDetailScreen() {
     setIsSuccess(false);
 
     try {
-      const result = await completeHabitForToday(habit, fileCompletionRepository);
-      const completions = await fileCompletionRepository.listByHabit(habit.id);
+      const result = await completeHabitForToday(habit, remoteCompletionRepository);
+      const completions = await remoteCompletionRepository.listByHabit(habit.id);
 
       setHabitDetail(buildHabitDetailSummary(habit, completions));
       setIsSuccess(true);
@@ -119,8 +123,21 @@ export default function HabitDetailScreen() {
     return <SessionLoadingScreen />;
   }
 
+  const activeGradient = isDark ? gradients.blueScreenDark : gradients.blueScreenLight;
+
   return (
-    <ScreenContainer contentStyle={styles.content} edges={['top']}>
+    <LinearGradient
+      colors={[...activeGradient.colors]}
+      locations={[...activeGradient.locations]}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+      style={styles.gradientRoot}
+    >
+      <ScreenContainer
+        style={{ backgroundColor: 'transparent' }}
+        contentStyle={styles.content}
+        edges={['top']}
+      >
       <AppHeader
         backLabel="Hábitos"
         eyebrow="Detalle del hábito"
@@ -156,8 +173,14 @@ export default function HabitDetailScreen() {
             {habitDetail.habit.target ? (
               <Text style={styles.habitDetail}>Meta: {habitDetail.habit.target}</Text>
             ) : null}
-            {reminder?.time ? <Text style={styles.habitDetail}>Recordatorio: {reminder.time}</Text> : null}
-            <Text style={styles.habitDetail}>Racha actual: {habitDetail.currentStreak} día(s)</Text>
+            {reminder?.time ? (
+              <Text style={styles.habitDetail}>
+                Recordatorio: <Text style={styles.roundedNumber}>{reminder.time}</Text>
+              </Text>
+            ) : null}
+            <Text style={styles.habitDetail}>
+              Racha actual: <Text style={styles.roundedNumber}>{habitDetail.currentStreak}</Text> día(s)
+            </Text>
           </View>
 
           <View style={styles.actions}>
@@ -204,13 +227,18 @@ export default function HabitDetailScreen() {
           title="Hábito no disponible"
         />
       ) : null}
-    </ScreenContainer>
+      </ScreenContainer>
+    </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
+  gradientRoot: {
+    flex: 1,
+  },
   content: {
     gap: spacing.lg,
+    paddingBottom: spacing.lg,
   },
   loadingRow: {
     alignItems: 'center',
@@ -220,6 +248,7 @@ const styles = StyleSheet.create({
     minHeight: 54,
   },
   loadingText: {
+    fontFamily: typography.fontFamily,
     color: colors.textSecondary,
     fontSize: 15,
     fontWeight: '600',
@@ -233,9 +262,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   statusLabel: {
+    fontFamily: typography.fontFamily,
     color: colors.textSecondary,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: typography.weights.semibold,
   },
   statusPill: {
     backgroundColor: colors.surfaceMuted,
@@ -246,14 +276,16 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   statusText: {
+    fontFamily: typography.fontFamily,
     color: colors.textPrimary,
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: typography.weights.heavy,
   },
   detailList: {
     gap: 5,
   },
   habitDetail: {
+    fontFamily: typography.fontFamily,
     color: colors.textSecondary,
     fontSize: 15,
     lineHeight: 22,
@@ -270,18 +302,26 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
   },
   historyTitle: {
+    fontFamily: typography.fontFamily,
     color: colors.textPrimary,
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: typography.weights.heavy,
+    letterSpacing: -0.4,
   },
   historyItem: {
+    fontFamily: typography.fontFamily,
     color: colors.textPrimary,
     fontSize: 14,
     lineHeight: 20,
   },
   historyEmpty: {
+    fontFamily: typography.fontFamily,
     color: colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
+  },
+  roundedNumber: {
+    fontFamily: typography.fontFamilyRound,
+    fontWeight: typography.weights.semibold,
   },
 });

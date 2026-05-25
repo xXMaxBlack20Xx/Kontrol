@@ -2,12 +2,15 @@
 title: "Historias de Usuario y Requerimientos - Kontrol"
 source_pdf: "IOS_Historias_Usuario_Requerimientos_Kontrol (1).pdf"
 converted_date: "2026-05-11"
+updated_at: "2026-05-24"
 project: "Kontrol"
 ---
 
 # Historias de Usuario y Requerimientos - Kontrol
 
 > Markdown conversion generated from the uploaded PDF. Page footers/headers were removed where possible; original document wording was preserved.
+
+> **NOTA DE IMPLEMENTACIÓN (2026-05-24):** El plan vigente no usa Microsoft Entra External ID, Azure AD B2C, tenants externos ni App Registration móvil. Kontrol implementa autenticación propia dentro de Azure Functions con JWT, argon2 y refresh tokens hasheados en Cosmos DB. Ver `docs/architecture/fase-2-backend-autenticacion.md`.
 
 HISTORIAS DE USUARIO Y REQUERIMIENTOS
 Etapa Análisis - Historias de Usuario y Requerimientos de Software bajo el estándar ISO/IEC/IEEE 29148:2018
@@ -28,7 +31,9 @@ Instructora                          Dra. Julia Guadalupe Juarez Hernandez
 
 Fecha de elaboración                 20 / 04 / 2026
 
-Versión del documento                1.67
+Versión del documento                1.68
+
+Actualización de alcance             21 / 05 / 2026 - Arquitectura Azure segura y local-first
 
 ---
 
@@ -42,8 +47,8 @@ y no funcionales claras, consistentes y verificables, alineadas con el estándar
 
 Kontrol busca resolver la necesidad de registrar hábitos de forma simple, rápida e intuitiva, priorizando una experiencia visual minimalista
 y consistente con lineamientos de diseño para iOS. La aplicación está pensada para que el usuario capture hábitos, marque cumplimiento
-diario, consulte rachas y visualice su progreso mediante gráficas simples y comprensibles, todo ello con almacenamiento local en el
-dispositivo.
+diario, consulte rachas y visualice su progreso mediante gráficas simples y comprensibles, conservando un comportamiento local-first y
+agregando una arquitectura cloud segura con autenticación propia en Azure Functions (JWT + argon2), Cosmos DB, Blob Storage y Notification Hubs.
 
 ## 2. Descripción general del sistema
 
@@ -69,22 +74,29 @@ metodológico del proyecto.
 
 ### 2.2 Módulos dentro del alcance
 
-- Gestión de cuenta local.
+- Gestión de cuenta y autenticación.
 - Inicio y cierre de sesión.
 - Gestión de hábitos.
 - Registro de cumplimiento diario.
 - Visualización de rachas y progreso.
 - Gestión de recordatorios locales.
 - Configuración general y consulta del aviso de privacidad.
+- Autenticación cloud con Azure Functions (JWT + argon2, autenticación propia).
+- Sincronización local-first mediante Azure Functions.
+- Almacenamiento de fotos mediante Blob Storage privado y URLs temporales.
+- Registro de dispositivos para notificaciones remotas mediante Azure Notification Hubs.
+- Monitoreo técnico mediante Application Insights.
 
 ### 2.3 Fuera del alcance del MVP
 
-- Sincronización en la nube.
 - Compartición de hábitos o estadísticas con otros usuarios.
 - Widgets de iOS.
 - Integración con Apple Watch o dispositivos externos.
 - Analítica avanzada predictiva.
 - Funciones sociales.
+- Sincronización multi-dispositivo en tiempo real.
+- Backend distinto a Azure Functions para la versión definida.
+- Acceso directo desde la app móvil a Cosmos DB, Blob Storage o Notification Hubs usando llaves privadas.
 
 ## 3. Objetivo
 >
@@ -178,7 +190,23 @@ Kontrol                                  Aplicación móvil del proyecto, enfoca
 
 Onboarding                               Flujo inicial de uso donde el usuario conoce la lógica general de la aplicación o completa información básica.
 
-Persistencia local                       Almacenamiento de información directamente en el dispositivo, sin depender de servicios en la nube.
+Persistencia local                       Almacenamiento de información directamente en el dispositivo para permitir uso sin conexión.
+
+Local-first                              Enfoque donde la app puede operar con datos locales y sincronizar con la nube cuando exista conectividad.
+
+Autenticación propia en Azure Functions    Servicio de identidad propio (JWT + argon2) para registro, inicio de sesión y emisión de tokens JWT.
+
+Azure Functions                          Backend seguro que valida tokens, aplica reglas de autorización y accede a servicios cloud.
+
+Azure Cosmos DB for NoSQL                Base de datos cloud para usuarios, hábitos, cumplimientos, recordatorios, dispositivos y metadatos.
+
+Azure Blob Storage                       Servicio de almacenamiento de archivos usado para fotos de perfil o fotos asociadas a hábitos.
+
+Azure Notification Hubs                  Servicio para registrar dispositivos y enviar notificaciones push remotas.
+
+SAS temporal                             URL firmada con vigencia limitada para cargar o leer archivos privados en Blob Storage.
+
+Token nativo de dispositivo              Token APNs o FCM obtenido por la app para registrar el dispositivo en Notification Hubs.
 
 Progreso                                 Representación visual o numérica del avance del usuario respecto a sus hábitos registrados.
 
@@ -186,13 +214,17 @@ Racha                                    Número de periodos consecutivos válid
 
 Recordatorio                             Aviso local programado por el usuario para apoyar el cumplimiento de un hábito.
 
-Postgres                                 Motor de base de datos local utilizado para almacenar la información del sistema en el dispositivo.
+Persistencia local Expo-compatible       Mecanismo de almacenamiento local compatible con Expo para sesión, hábitos, cumplimientos y pendientes de sincronización.
 
 Vista de detalle                         Pantalla que presenta información específica de un hábito individual, incluyendo estado, historial y racha.
 
 ## 7. Historias de usuario y Requerimientos Asociados
 >
 > Instrucción: En esta sección, el equipo debe transformar las necesidades del negocio en especificaciones técnicas. Cada fila debe cumplir con el "estándar de oro" de ambos recursos.
+
+Nota de actualización 1.68 (2026-05-24): HU-01 y HU-02 quedan alineadas al nuevo plan Azure sin tenants externos. El registro, inicio de sesión, recuperación futura de cuenta y validación de credenciales se implementan mediante autenticación propia en Azure Functions (JWT + argon2).
+La app puede conservar sesión y datos operativos local-first, pero no debe almacenar contraseñas en texto plano ni validar credenciales por cuenta propia.
+Ver `docs/architecture/fase-2-backend-autenticacion.md`.
 
 Requerimiento no funcional                           Criterio de aceptación
 Requerimiento funcional
@@ -205,21 +237,21 @@ contexto                         Then (Entonces) + resultado esperado
 
 HU-01   Como           quiero registrar     para acceder a              -   [RF-01] El sistema                  -   [RNF-01] (Rendimiento)                              Happy path
 usuario        una cuenta           las funciones de                 deberá registrar una                     El sistema deberá
-nuevo          local con mi         Kontrol y                        cuenta local cuando el                   completar el proceso de                -   Dado que el usuario se encuentra en
+nuevo          con mi correo        Kontrol y                        cuenta mediante Azure Functions          completar el proceso de                -   Dado que el usuario se encuentra en
 correo               conservar mis                    usuario capture un                       registro en un tiempo                       la pantalla de registro
 electrónico y        datos dentro de                  correo electrónico con                   máximo de 3 segundos                   -   Cuando ingresa un correo válido,
 contraseña           la aplicación.                   formato válido, una                      bajo condiciones normales                   una contraseña válida, acepta el
 contraseña válida y                      de uso.                                    aviso de privacidad y confirma
 confirme el formulario                                                          -   Entonces el sistema deberá registrar
-de registro.                       -   [RNF-01.1] (Seguridad)                     la cuenta localmente y permitir
+de registro.                       -   [RNF-01.1] (Seguridad)                     la cuenta y permitir
 El sistema deberá                           continuar al acceso inicial.
 
-- [RF-01.1] El sistema                     almacenar la contraseña
-deberá validar que el                    mediante un mecanismo
-correo electrónico no se                 seguro que evite su
-encuentre previamente                    conservación en texto
-registrado en la base de                 plano.
-datos local antes de
+- [RF-01.1] El sistema                     procesar la contraseña
+deberá validar que el                    únicamente en Azure
+correo electrónico no se                 Functions y guardar solo
+encuentre previamente                    `passwordHash`, evitando
+registrado en `authUsers`                su conservación en texto
+antes de                                plano.
 confirmar la creación
 
 ---
@@ -254,8 +286,8 @@ nuevo     correo           mis hábitos y                usuario cuando ingrese 
 electrónico y    progreso en                  un correo electrónico               en un tiempo máximo de 2           la pantalla de inicio de sesión
 contraseña       Kontrol.                     y contraseña que                    segundos bajo condiciones     -   Cuando ingresa credenciales válidas
 coincidan con una                   normales de uso.                  y confirma
-cuenta registrada                                                 -   Entonces el sistema deberá
-localmente.                   -   [RNF-02.1] (Usabilidad)           autenticarlo y mostrar la pantalla
+cuenta registrada en                                             -   Entonces el sistema deberá
+Azure Functions.              -   [RNF-02.1] (Usabilidad)           autenticarlo y mostrar la pantalla
 El sistema deberá mostrar          principal.
 
 - [RF-02.1] El sistema                mensajes claros cuando el
@@ -264,7 +296,8 @@ acceso cuando las
 credenciales                   -   [RNF-02.2] (Seguridad)
 ingresadas no                       El sistema deberá proteger
 coincidan con las                   el acceso a pantallas
-almacenadas.                       privadas mientras no exista                  Alterno
+credenciales hasheadas              privadas mientras no exista                  Alterno
+almacenadas.
 una sesión activa válida.
 - [RF-02.2] El sistema                                              -   Dado que el usuario ya cuenta con
 deberá mantener la                                                     una sesión vigente
@@ -644,6 +677,60 @@ temporalmente.
 
 ---
 
+### 7.1 Historias de usuario y requerimientos asociados a la arquitectura Azure
+
+Esta sección actualiza el alcance técnico de Kontrol para incorporar servicios cloud sin romper el principio local-first. La app móvil no debe
+conectarse directamente a Cosmos DB, Blob Storage ni Notification Hubs con llaves privadas; todo acceso a servicios Azure debe pasar por Azure
+Functions y por validación de tokens emitidos por el backend de autenticación propio.
+
+> **NOTA DE IMPLEMENTACIÓN:** El plan vigente usa autenticación propia dentro de Azure Functions (JWT + argon2), sin Microsoft Entra External ID, Azure AD B2C, tenants externos ni App Registration móvil. Ver `docs/architecture/fase-2-backend-autenticacion.md`.
+
+HU-12 Como usuario quiero registrarme e iniciar sesión mediante el backend de autenticación de Kontrol para acceder de forma segura a mis datos.
+
+- [RF-12] El sistema deberá exponer endpoints REST en Azure Functions para registro, login, refresh y logout de usuarios.
+- [RF-12.1] El sistema deberá emitir un access token JWT válido después de un inicio de sesión exitoso.
+- [RF-12.2] Azure Functions deberá validar el JWT, su firma y su expiración antes de responder endpoints protegidos.
+- [RF-12.3] Azure Functions deberá extraer un userId estable desde el token y usarlo para autorizar operaciones por usuario.
+- [RNF-12] (Seguridad) La app móvil no deberá almacenar contraseñas ni secretos de Azure.
+- Criterio de aceptación: dado que el usuario inicia sesión con credenciales válidas, cuando la app llama `GET /api/me`, entonces Azure Functions deberá devolver el userId del token y rechazar solicitudes sin token o con token inválido.
+
+HU-13 Como usuario quiero sincronizar mis hábitos y cumplimientos con Azure para conservar respaldo cloud sin perder uso sin conexión.
+
+- [RF-13] El sistema deberá exponer `POST /api/sync/habits`, `GET /api/habits`, `POST /api/completions` y `GET /api/progress` desde Azure Functions.
+- [RF-13.1] El sistema deberá guardar hábitos, cumplimientos y progreso en Cosmos DB usando `/userId` como partition key.
+- [RF-13.2] El sistema deberá conservar pendientes locales cuando no exista conectividad y sincronizarlos al recuperar conexión.
+- [RF-13.3] El sistema deberá impedir que un usuario consulte o modifique datos asociados a otro userId.
+- [RNF-13] (Confiabilidad) La pérdida temporal de internet no deberá bloquear la creación, edición, eliminación o marcado local de hábitos.
+- Criterio de aceptación: dado que el usuario tiene hábitos locales pendientes, cuando recupera conexión y se ejecuta la sincronización, entonces Cosmos DB deberá reflejar los cambios autorizados y la app deberá mantener una vista consistente.
+
+HU-14 Como usuario quiero subir fotos de perfil o fotos asociadas a hábitos para personalizar mi experiencia sin exponer archivos públicamente.
+
+- [RF-14] El sistema deberá exponer `POST /api/photos/upload-url`, `POST /api/photos/metadata`, `GET /api/photos/{photoId}` y `DELETE /api/photos/{photoId}` desde Azure Functions.
+- [RF-14.1] Azure Functions deberá generar URLs SAS temporales para cargar o leer archivos en Blob Storage privado.
+- [RF-14.2] El sistema deberá guardar en Cosmos DB solamente la metadata de la foto, incluyendo userId, blobPath, contentType, sizeBytes y createdAt.
+- [RF-14.3] El sistema deberá impedir que una URL o metadata permita acceso a fotos de otro usuario.
+- [RNF-14] (Seguridad) El contenedor de Blob Storage deberá permanecer privado y no deberá exponerse mediante acceso público anónimo.
+- Criterio de aceptación: dado que el usuario solicita subir una foto válida, cuando obtiene una URL temporal y completa la carga, entonces la metadata deberá quedar registrada y el archivo deberá seguir privado fuera de la URL temporal.
+
+HU-15 Como usuario quiero recibir notificaciones push remotas para reforzar mis recordatorios cuando la app tenga integración cloud habilitada.
+
+- [RF-15] El sistema deberá solicitar permisos de notificaciones y obtener el token nativo del dispositivo mediante `getDevicePushTokenAsync`.
+- [RF-15.1] El sistema deberá enviar platform, pushProvider y nativePushToken a `POST /api/devices/register`.
+- [RF-15.2] Azure Functions deberá registrar la instalación en Azure Notification Hubs y guardar metadata del dispositivo en Cosmos DB.
+- [RF-15.3] Azure Functions deberá exponer `POST /api/notifications/send-test` para validar el envío controlado de una notificación de prueba.
+- [RNF-15] (Compatibilidad) Las notificaciones push remotas deberán validarse en development build o build nativa, no en Expo Go.
+- Criterio de aceptación: dado que el usuario concedió permisos y la app obtuvo un token APNs o FCM, cuando se registra el dispositivo, entonces Notification Hubs deberá tener una instalación asociada al userId.
+
+HU-16 Como equipo de desarrollo quiero monitorear el backend de Kontrol para diagnosticar fallas de autenticación, sincronización, fotos y notificaciones.
+
+- [RF-16] Azure Functions deberá registrar eventos relevantes y errores en Application Insights.
+- [RF-16.1] El sistema deberá exponer `GET /api/health` para validar disponibilidad básica del backend.
+- [RF-16.2] Los logs no deberán incluir contraseñas, llaves privadas, connection strings ni tokens completos.
+- [RNF-16] (Observabilidad) El backend deberá permitir identificar errores por endpoint, código de estado y correlación temporal.
+- Criterio de aceptación: dado que se ejecuta una solicitud válida o inválida contra el backend, cuando ocurre una respuesta, entonces deberá existir evidencia de operación o error en Application Insights sin secretos expuestos.
+
+---
+
 ## 8. Requerimientos Interfaz de Usuario (interfaz gráfica)
 >
 > Instrucción: Documente aquí los diagramas de casos de uso, actividades, secuencia de componentes y de arquitectura.
@@ -687,12 +774,13 @@ orientados a iOS. La interfaz deberá reducir fricción de uso y permitir que la
 >
 > Instrucción: Documente aquí los diagramas de casos de uso, actividades, secuencia de componentes y de arquitectura.
 
-Aunque Kontrol opera principalmente con persistencia local, interactúa con ciertos servicios y recursos externos del dispositivo.
+Kontrol opera bajo un enfoque local-first, pero interactúa con servicios externos del dispositivo y con una arquitectura Azure segura para
+autenticación, sincronización, fotos, notificaciones remotas y monitoreo.
 
 ### 9.1 Interfaz con base de datos local
 
-- El sistema deberá utilizar Postgres como mecanismo principal de persistencia local.
-- El sistema deberá mantener tablas o estructuras equivalentes para cuentas, hábitos, registros de cumplimiento y recordatorios.
+- El sistema deberá utilizar persistencia local compatible con Expo para sesión, hábitos, registros de cumplimiento, recordatorios y cola de sincronización.
+- El sistema deberá mantener estructuras equivalentes para hábitos, registros de cumplimiento, recordatorios, preferencias y pendientes de sincronización.
 
 ### 9.2 Interfaz con notificaciones del dispositivo
 
@@ -703,11 +791,31 @@ Aunque Kontrol opera principalmente con persistencia local, interactúa con cier
 
 - El sistema deberá conservar sesión, preferencias básicas y datos de hábitos dentro del almacenamiento local definido por la
 arquitectura.
+- El sistema deberá conservar datos pendientes cuando no exista conectividad y sincronizarlos posteriormente con Azure Functions.
 
 ### 9.4 Interfaz con capacidades del sistema operativo
 
 - El sistema deberá adaptarse a las dimensiones de pantalla del iPhone.
 - El sistema deberá conservar consistencia de navegación y comportamiento con el entorno móvil del dispositivo.
+
+### 9.5 Interfaz con Azure Functions (autenticación propia)
+
+- El sistema deberá usar autenticación propia dentro de Azure Functions (JWT + argon2) para registro, inicio de sesión y emisión de tokens JWT.
+- La app Expo deberá configurar únicamente `EXPO_PUBLIC_API_BASE_URL` para comunicarse con el backend.
+- Los tokens JWT se almacenarán de forma segura en el dispositivo (SecureStore de Expo).
+- Ver `docs/architecture/fase-2-backend-autenticacion.md` para los detalles de implementación.
+
+### 9.6 Interfaz con Azure Functions
+
+- La app móvil deberá consumir los endpoints de Azure Functions mediante `EXPO_PUBLIC_API_BASE_URL`.
+- Azure Functions deberá validar cada token antes de acceder a datos privados.
+- Azure Functions deberá ser la única capa con acceso a llaves o connection strings de Cosmos DB, Blob Storage y Notification Hubs.
+
+### 9.7 Interfaz con Cosmos DB, Blob Storage y Notification Hubs
+
+- Cosmos DB deberá almacenar datos de aplicación en contenedores separados para users, habits, habitCompletions, reminders, devices y photos, todos con partition key `/userId`.
+- Blob Storage deberá mantener el contenedor `user-photos` en modo privado y solo aceptar operaciones mediante URLs temporales generadas por Azure Functions.
+- Notification Hubs deberá registrar tokens nativos APNs o FCM v1 obtenidos por la app; no se deberá usar ExpoPushToken como token principal para este flujo.
 
 ---
 
@@ -726,12 +834,15 @@ principales del MVP.
 - La vista de detalle del hábito deberá cargarse en un máximo de 2 segundos.
 - La vista de progreso deberá cargarse en un máximo de 3 segundos.
 - Las operaciones de recordatorios deberán guardarse en un máximo de 2 segundos.
+- Las llamadas a Azure Functions deberán rechazar solicitudes no autorizadas sin consultar servicios de datos internos.
+- La sincronización cloud deberá ejecutarse de forma no bloqueante para no impedir el uso local de la app.
 
 ### 10.2 Consideraciones de eficiencia de interacción
 
 - El usuario deberá poder registrar un hábito sin recorrer flujos extensos.
 - Las pantallas principales no deberán presentar bloqueos perceptibles durante el uso normal.
 - Las visualizaciones de progreso deberán generarse a partir de datos locales para reducir la latencia operativa.
+- La app deberá priorizar datos locales durante la interacción y sincronizar con Azure en segundo plano cuando sea posible.
 
 ## 11. Mantenimiento
 >
@@ -776,8 +887,11 @@ El desarrollo de Kontrol estará sujeto a las siguientes restricciones:
 ---
 
 - La aplicación deberá implementarse con React Native como framework principal del proyecto.
-- La persistencia local deberá implementarse mediante Postgres.
-- El MVP no deberá depender de backend propio ni sincronización con la nube.
+- La persistencia local deberá implementarse mediante mecanismos compatibles con Expo y deberá permitir operación sin conexión.
+- La arquitectura cloud deberá implementarse con Azure Functions como backend seguro.
+- La app móvil no deberá contener `AZURE_COSMOS_KEY`, `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_NOTIFICATION_HUB_CONNECTION_STRING` ni otros secretos privados.
+- La app móvil no deberá conectarse directamente a Cosmos DB, Blob Storage ni Notification Hubs.
+- Los secretos deberán configurarse en Azure Functions Application Settings y, en una etapa posterior, podrán migrarse a Managed Identity y Key Vault.
 - El MVP no deberá incluir widgets de iOS.
 - El MVP no deberá incluir funciones sociales ni compartición externa de estadísticas.
 - La interfaz deberá conservar un enfoque visual minimalista y consistente con buenas prácticas de aplicaciones iOS.
@@ -793,12 +907,15 @@ El sistema deberá contemplar requerimientos básicos relacionados con privacida
 
 - El sistema deberá presentar un aviso de privacidad accesible desde la configuración.
 - El sistema deberá solicitar la aceptación del aviso de privacidad antes del registro de la cuenta.
-- El sistema deberá limitar la recopilación de datos personales a los estrictamente necesarios para la operación del MVP.
+- El sistema deberá limitar la recopilación de datos personales a los estrictamente necesarios para autenticación, hábitos, fotos, recordatorios, sincronización y notificaciones.
+- El aviso de privacidad deberá informar que la autenticación se realiza mediante el backend propio de Kontrol en Azure Functions y que ciertos datos de aplicación pueden almacenarse en Azure.
 
 ### 14.2 Protección de datos
 
 - El sistema deberá evitar el almacenamiento inseguro de credenciales.
 - El sistema deberá restringir el acceso a la información privada mientras no exista una sesión activa válida.
+- El sistema no deberá guardar contraseñas en texto plano en Cosmos DB ni en la persistencia local de la app; Cosmos DB solo podrá almacenar `passwordHash` generado con argon2.
+- El backend deberá autorizar el acceso a datos por userId extraído del token validado.
 - El sistema deberá manejar la información del usuario conforme a las reglas de privacidad definidas para el proyecto académico y la normativa
 aplicable.
 

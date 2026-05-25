@@ -10,7 +10,8 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import { colors, radius, shadows, spacing } from './theme';
+import { radius, shadows, spacing, typography } from './theme';
+import { useTheme } from './theme-context';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -21,6 +22,7 @@ type ButtonProps = Omit<PressableProps, 'children' | 'style'> & {
   loading?: boolean;
   style?: StyleProp<ViewStyle>;
   title: string;
+  textColor?: string;
 };
 
 type SecondaryButtonProps = ButtonProps & {
@@ -35,14 +37,18 @@ export function PrimaryButton({
   loading = false,
   style,
   title,
+  textColor,
   ...pressableProps
 }: ButtonProps) {
+  const { colors } = useTheme();
+
   return (
     <Pressable
       disabled={disabled || loading}
       style={({ pressed }) => [
         styles.button,
         styles.primaryButton,
+        { backgroundColor: colors.primary },
         compact && styles.compactButton,
         fullWidth ? styles.fullWidth : styles.selfStart,
         (pressed || disabled || loading) && styles.pressed,
@@ -50,11 +56,11 @@ export function PrimaryButton({
       ]}
       {...pressableProps}>
       {loading ? (
-        <ActivityIndicator color={colors.primaryText} />
+        <ActivityIndicator color={textColor || colors.primaryText} />
       ) : (
         <>
-          {icon ? <MaterialIcons color={colors.primaryText} name={icon} size={20} /> : null}
-          <Text style={styles.primaryButtonText}>{title}</Text>
+          {icon ? <MaterialIcons color={textColor || colors.primaryText} name={icon} size={20} /> : null}
+          <Text style={[styles.primaryButtonText, { color: textColor || colors.primaryText }]}>{title}</Text>
         </>
       )}
     </Pressable>
@@ -72,6 +78,7 @@ export function SecondaryButton({
   tone = 'default',
   ...pressableProps
 }: SecondaryButtonProps) {
+  const { colors } = useTheme();
   const contentColor = tone === 'danger' ? colors.dangerText : colors.textPrimary;
 
   return (
@@ -80,9 +87,13 @@ export function SecondaryButton({
       style={({ pressed }) => [
         styles.button,
         styles.secondaryButton,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.borderStrong,
+        },
         compact && styles.compactButton,
         fullWidth ? styles.fullWidth : styles.selfStart,
-        (pressed || disabled || loading) && styles.secondaryPressed,
+        (pressed || disabled || loading) && [styles.secondaryPressed, { backgroundColor: colors.surfacePressed }],
         style,
       ]}
       {...pressableProps}>
@@ -91,7 +102,7 @@ export function SecondaryButton({
       ) : (
         <>
           {icon ? <MaterialIcons color={contentColor} name={icon} size={20} /> : null}
-          <Text style={[styles.secondaryButtonText, tone === 'danger' && styles.dangerText]}>{title}</Text>
+          <Text style={[styles.secondaryButtonText, { color: colors.textPrimary }, tone === 'danger' && { color: colors.dangerText }]}>{title}</Text>
         </>
       )}
     </Pressable>
@@ -108,12 +119,15 @@ export function DestructiveButton({
   title,
   ...pressableProps
 }: ButtonProps) {
+  const { colors } = useTheme();
+
   return (
     <Pressable
       disabled={disabled || loading}
       style={({ pressed }) => [
         styles.button,
         styles.destructiveButton,
+        { backgroundColor: colors.dangerText },
         compact && styles.compactButton,
         fullWidth ? styles.fullWidth : styles.selfStart,
         (pressed || disabled || loading) && styles.pressed,
@@ -125,7 +139,7 @@ export function DestructiveButton({
       ) : (
         <>
           {icon ? <MaterialIcons color={colors.primaryText} name={icon} size={20} /> : null}
-          <Text style={styles.primaryButtonText}>{title}</Text>
+          <Text style={[styles.primaryButtonText, { color: colors.primaryText }]}>{title}</Text>
         </>
       )}
     </Pressable>
@@ -153,15 +167,10 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   primaryButton: {
-    backgroundColor: colors.primary,
     ...shadows.button,
   },
-  destructiveButton: {
-    backgroundColor: colors.dangerText,
-  },
+  destructiveButton: {},
   secondaryButton: {
-    backgroundColor: colors.surface,
-    borderColor: colors.borderStrong,
     borderWidth: 1,
   },
   pressed: {
@@ -169,20 +178,16 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.99 }],
   },
   secondaryPressed: {
-    backgroundColor: colors.surfacePressed,
     opacity: 0.92,
   },
   primaryButtonText: {
-    color: colors.primaryText,
+    fontFamily: typography.fontFamily,
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: typography.weights.semibold,
   },
   secondaryButtonText: {
-    color: colors.textPrimary,
+    fontFamily: typography.fontFamily,
     fontSize: 16,
-    fontWeight: '700',
-  },
-  dangerText: {
-    color: colors.dangerText,
+    fontWeight: typography.weights.semibold,
   },
 });

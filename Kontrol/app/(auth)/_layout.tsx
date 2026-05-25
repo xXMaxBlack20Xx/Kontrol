@@ -1,13 +1,14 @@
 import { Redirect, Stack, type Href, usePathname } from 'expo-router';
 
 import { SessionLoadingScreen } from '@/components/session-loading-screen';
-import { colors } from '@/components/ui/theme';
+import { useTheme } from '@/components/ui/theme-context';
 import { useAuth } from '@/features/account/auth-context';
 
 export default function AuthLayout() {
   const { isAuthenticated, isLoadingSession } = useAuth();
   const pathname = usePathname();
   const isPrivacyRoute = pathname.endsWith('/privacy');
+  const { colors } = useTheme();
 
   if (isLoadingSession) {
     return <SessionLoadingScreen />;
@@ -28,7 +29,7 @@ export default function AuthLayout() {
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.textPrimary,
           headerShadowVisible: false,
-          title: 'Aviso de privacidad',
+          title: '',
         }}
       />
     </Stack>

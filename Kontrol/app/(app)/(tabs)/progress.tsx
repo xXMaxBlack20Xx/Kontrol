@@ -5,16 +5,19 @@ import { SessionLoadingScreen } from '@/components/session-loading-screen';
 import { AppHeader } from '@/components/ui/app-header';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { LinearGradient } from 'expo-linear-gradient';
 import { FeedbackMessage } from '@/components/ui/form';
 import { ScreenContainer } from '@/components/ui/screen-container';
-import { colors, radius, spacing } from '@/components/ui/theme';
+import { gradients, radius, spacing, typography } from '@/components/ui/theme';
+import { useTheme } from '@/components/ui/theme-context';
 import { useAuth } from '@/features/account/auth-context';
-import { buildProgressSummary, type ProgressPeriod, type ProgressSummary } from '@/features/habits/completion';
-import { fileCompletionRepository } from '@/features/habits/local-completion-repository';
-import { fileHabitRepository } from '@/features/habits/local-habit-repository';
+import { type ProgressPeriod, type ProgressSummary } from '@/features/habits/completion';
+import { getRemoteProgress } from '@/features/habits/remote-progress-service';
 
 export default function ProgressScreen() {
   const { user } = useAuth();
+  const { colors, isDark } = useTheme();
+  const styles = getStyles(colors);
   const [period, setPeriod] = useState<ProgressPeriod>('weekly');
   const [progress, setProgress] = useState<ProgressSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,18 +37,15 @@ export default function ProgressScreen() {
       setMessage(null);
 
       try {
-        const [habits, completions] = await Promise.all([
-          fileHabitRepository.listByAccount(user.accountId),
-          fileCompletionRepository.listByAccount(user.accountId),
-        ]);
+        const remoteProgress = await getRemoteProgress(period);
 
         if (isMounted) {
-          setProgress(buildProgressSummary(habits, completions, period));
+          setProgress(remoteProgress);
         }
       } catch {
         if (isMounted) {
           setProgress(null);
-          setMessage('No se pudo cargar el progreso local. Intenta nuevamente.');
+          setMessage('No se pudo cargar el progreso desde Kontrol. Intenta nuevamente.');
         }
       } finally {
         if (isMounted) {
@@ -65,11 +65,23 @@ export default function ProgressScreen() {
     return <SessionLoadingScreen />;
   }
 
+  const activeGradient = isDark ? gradients.blueScreenDark : gradients.blueScreenLight;
+
   return (
-    <ScreenContainer contentStyle={styles.content} edges={['top']}>
+    <LinearGradient
+      colors={[...activeGradient.colors]}
+      locations={[...activeGradient.locations]}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+      style={styles.gradientRoot}
+    >
+      <ScreenContainer
+        style={{ backgroundColor: 'transparent' }}
+        contentStyle={styles.content}
+        edges={['top']}
+      >
       <AppHeader
-        description="Consulta tus avances con indicadores simples calculados desde tus registros locales."
-        eyebrow="Kontrol"
+        description="Consulta tus avances con indicadores simples calculados desde tus registros en Kontrol."
         title="Progreso"
       />
 
@@ -133,7 +145,15 @@ export default function ProgressScreen() {
                 <View key={point.date} style={styles.chartRow}>
                   <Text style={styles.chartDate}>{point.date.slice(5)}</Text>
                   <View style={styles.chartTrack}>
-                    <View style={[styles.chartBar, { width: `${point.completionRate}%` }]} />
+                    <View
+                      style={[
+                        styles.chartBar,
+                        {
+                          width: `${point.completionRate}%`,
+                          backgroundColor: isDark ? '#0A84FF' : '#007AFF',
+                        },
+                      ]}
+                    />
                   </View>
                   <Text style={styles.chartValue}>{point.completionCount}</Text>
                 </View>
@@ -148,23 +168,27 @@ export default function ProgressScreen() {
           )}
         </>
       ) : null}
-    </ScreenContainer>
+      </ScreenContainer>
+    </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
+  gradientRoot: {
+    flex: 1,
+  },
   content: {
     gap: spacing.lg,
   },
   periodSelector: {
-    backgroundColor: colors.border,
-    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.xl,
     flexDirection: 'row',
-    padding: 4,
+    padding: 6,
   },
   periodButton: {
     alignItems: 'center',
-    borderRadius: 14,
+    borderRadius: radius.md,
     flex: 1,
     minHeight: 44,
     justifyContent: 'center',
@@ -176,9 +200,10 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
   periodButtonText: {
+    fontFamily: typography.fontFamily,
     color: colors.textSecondary,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: typography.weights.semibold,
   },
   periodButtonTextActive: {
     color: colors.textPrimary,
@@ -191,6 +216,7 @@ const styles = StyleSheet.create({
     minHeight: 54,
   },
   loadingText: {
+    fontFamily: typography.fontFamily,
     color: colors.textSecondary,
     fontSize: 15,
     fontWeight: '600',
@@ -205,22 +231,28 @@ const styles = StyleSheet.create({
     minWidth: 96,
   },
   indicatorValue: {
+    fontFamily: typography.fontFamilyRound,
     color: colors.textPrimary,
-    fontSize: 26,
-    fontWeight: '800',
+    fontSize: 28,
+    fontWeight: typography.weights.heavy,
+    letterSpacing: -0.6,
   },
   indicatorLabel: {
+    fontFamily: typography.fontFamily,
     color: colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
+    fontWeight: typography.weights.semibold,
   },
   chartCard: {
     gap: 10,
   },
   chartTitle: {
+    fontFamily: typography.fontFamily,
     color: colors.textPrimary,
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: typography.weights.heavy,
+    letterSpacing: -0.5,
   },
   chartRow: {
     alignItems: 'center',
@@ -228,6 +260,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   chartDate: {
+    fontFamily: typography.fontFamily,
     color: colors.textSecondary,
     fontSize: 13,
     width: 44,
@@ -240,11 +273,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   chartBar: {
-    backgroundColor: colors.textPrimary,
     borderRadius: radius.pill,
     height: '100%',
   },
   chartValue: {
+    fontFamily: typography.fontFamilyRound,
     color: colors.textPrimary,
     fontSize: 13,
     fontWeight: '700',

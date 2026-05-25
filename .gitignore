@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules/
+/package-lock.json
 
 # Expo
 .expo/
@@ -32,14 +33,30 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+.env.*
+local.settings.json
+backend/azure-functions/local.settings.json
+backend/azure-functions/azure-backup/
+**/*appsettings*.json
 
 # typescript
 *.tsbuildinfo
+
+# build output
+build/
+dist/
 
 app-example
 
 # generated native folders
 /ios
 /android
-\nnode_modules/
+node_modules/
 .expo/
+.antigravitycli/
+**/.antigravitycli/
+*.backup.ts
+*.backup-before-*
+backend/azure-functions/rimraf
+backend/azure-functions/kontrol-azure-functions@1.0.0

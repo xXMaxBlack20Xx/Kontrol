@@ -2,12 +2,15 @@
 title: "Ciclo de Vida del Desarrollo iOS - Kontrol"
 source_pdf: "APS_Ciclo_de_vida_del_desarrollo_iOS (1).pdf"
 converted_date: "2026-05-11"
+updated_at: "2026-05-24"
 project: "Kontrol"
 ---
 
 # Ciclo de Vida del Desarrollo iOS - Kontrol
 
 > Markdown conversion generated from the uploaded PDF. Page footers/headers were removed where possible; original document wording was preserved.
+
+> **NOTA DE IMPLEMENTACIÓN (2026-05-24):** El plan vigente no usa Microsoft Entra External ID, Azure AD B2C, tenants externos ni App Registration móvil. La autenticación se implementa dentro de Azure Functions con JWT, argon2 y refresh tokens hasheados en Cosmos DB. Ver `docs/architecture/fase-2-backend-autenticacion.md`.
 
 Kontrol - Ciclo de vida
 del desarrollo iOS
@@ -16,7 +19,9 @@ Nombre del Equipo                   Chiapanecos
 
 Nombre del Proyecto                 Kontrol
 
-Versión del documento               1.0
+Versión del documento               1.1
+
+Actualización de alcance            21/05/2026 - Arquitectura Azure segura y local-first
 
 Integrantes del equipo                    - Rodrigo Maximo Trigo Gonzalez
 
@@ -66,22 +71,29 @@ consistencia y cumplimiento metodológico del proyecto.
 
 #### 1.2.2 Módulos dentro del alcance
 
-- Gestión de cuenta local.
+- Gestión de cuenta y autenticación.
 - Inicio y cierre de sesión.
 - Gestión de hábitos.
 - Registro de cumplimiento diario.
 - Visualización de rachas y progreso.
 - Gestión de recordatorios locales.
 - Configuración general y consulta del aviso de privacidad.
+- Autenticación cloud con Azure Functions (JWT + argon2, autenticación propia).
+- Sincronización local-first mediante Azure Functions y Cosmos DB.
+- Fotos privadas mediante Blob Storage y URLs temporales.
+- Registro de dispositivos y notificaciones push remotas mediante Azure Notification Hubs.
+- Monitoreo técnico mediante Application Insights.
 
 #### 1.2.3 Fuera del alcance del MVP
 
-- Sincronización en la nube.
 - Compartición de hábitos o estadísticas con otros usuarios.
 - Widgets de iOS.
 - Integración con Apple Watch o dispositivos externos.
 - Analítica avanzada predictiva.
 - Funciones sociales.
+- Sincronización multi-dispositivo en tiempo real.
+- Acceso directo desde la app móvil a Cosmos DB, Blob Storage o Notification Hubs usando llaves privadas.
+- Backend distinto a Azure Functions para la arquitectura definida.
 
 ---
 
@@ -126,18 +138,18 @@ Para el desarrollo de Kontrol se utilizarán las siguientes herramientas:
 
 ---
 
-- Expo Go como entorno de validación rápida durante la etapa de desarrollo y pruebas
-funcionales del MVP.
+- Expo Go como entorno de validación rápida para flujos que no dependan de capacidades nativas no disponibles.
+- Development builds o builds nativas para validar autenticación profunda, tokens nativos y notificaciones push remotas.
 - GitHub para el control de versiones, colaboración y seguimiento de cambios del proyecto.
-- Postman para la validación de servicios y pruebas de integración en la arquitectura de
-evolución.
-- DBeaver como herramienta de inspección y administración de base de datos.
-- TypeORM como capa de mapeo objeto-relacional en los escenarios donde se requiera
-trabajar con persistencia relacional dentro de la arquitectura proyectada.
-- Postgres como motor de base de datos considerado para la evolución del sistema en
-escenarios con capa de servicios.
+- Postman para la validación de endpoints de Azure Functions y pruebas de integración.
+- Autenticación propia en Azure Functions (JWT + argon2) para registro, inicio de sesión y emisión de tokens JWT.
+- Azure Functions Runtime 4.x con Node.js 22 como backend seguro.
+- Azure Cosmos DB for NoSQL en modo serverless como almacenamiento cloud principal.
+- Azure Blob Storage con contenedores privados para fotos.
+- Azure Notification Hubs para notificaciones push remotas mediante APNs y FCM v1.
+- Application Insights para logs, monitoreo y diagnóstico del backend.
 
-### 4.2 Arquitectura del MVP
+### 4.2 Arquitectura del MVP local-first
 
 En su etapa actual, Kontrol seguirá una arquitectura cliente local-first, organizada en capas lógicas
 dentro de la aplicación móvil:
@@ -145,32 +157,106 @@ dentro de la aplicación móvil:
 - Capa de presentación: pantallas, componentes visuales y navegación.
 - Capa de lógica de negocio: validaciones, reglas de cálculo de rachas, control de sesiones,
 manejo de cumplimiento diario y gestión de recordatorios.
-- Capa de persistencia local: almacenamiento de cuentas, hábitos, registros y configuraciones
+- Capa de persistencia local: almacenamiento de sesión, hábitos, registros y configuraciones
 necesarias para el funcionamiento del MVP.
+- Capa de sincronización: cola local de operaciones pendientes y cliente HTTP hacia Azure Functions cuando exista conectividad.
 
 Esta estructura permitirá mantener separadas las responsabilidades principales del sistema y
 facilitará la trazabilidad entre requerimientos, diseño, construcción y pruebas.
 
-### 4.3 Arquitectura de evolución futura
+### 4.3 Arquitectura Azure objetivo
 
-Si el proyecto evoluciona más allá del MVP, Kontrol podrá adoptar una arquitectura cliente-servidor,
-donde:
+Kontrol adopta una arquitectura cliente-servidor segura para las funciones cloud, manteniendo la app móvil como cliente local-first:
 
 - React Native + Expo funcionará como cliente móvil.
-- NestJS se utilizará como framework backend para exponer servicios y centralizar lógica de
-negocio del lado del servidor.
-- TypeORM se empleará como mecanismo de acceso y mapeo de datos.
-- Postgres operará como sistema gestor de base de datos relacional.
+- Azure Functions implementará autenticación propia (JWT + argon2) como autoridad de autenticación.
+- Azure Functions será el backend seguro para validar JWT, extraer userId, autorizar operaciones y acceder a servicios cloud.
+- Azure Cosmos DB for NoSQL almacenará usuarios, hábitos, cumplimientos, recordatorios, dispositivos y metadata de fotos.
+- Azure Blob Storage almacenará archivos reales, como fotos de perfil o fotos asociadas a hábitos.
+- Azure Notification Hubs registrará tokens nativos APNs/FCM y enviará notificaciones push remotas.
+- Application Insights registrará telemetría técnica, errores y disponibilidad.
 - Postman servirá para validar endpoints y flujos de integración.
-- DBeaver permitirá administrar y revisar la estructura y consistencia de la base de datos.
+
+La regla central de seguridad es que la app móvil nunca deberá comunicarse directamente con Cosmos DB, Blob Storage ni Notification Hubs usando
+llaves privadas. Todo acceso deberá pasar por Azure Functions.
+
+Diagrama lógico:
+
+```text
+Kontrol Expo / React Native
+        |
+        | Registro, login y requests con JWT Bearer
+        v
+Azure Functions API (autenticación propia JWT + argon2)
+        |----> Azure Cosmos DB for NoSQL
+        |----> Azure Blob Storage
+        |----> Azure Notification Hubs
+        |----> Application Insights
+```
+
+Endpoints mínimos del backend:
+
+- `GET /api/health`
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
+- `GET /api/me`
+- `POST /api/sync/habits`
+- `GET /api/habits`
+- `POST /api/completions`
+- `GET /api/progress`
+- `POST /api/reminders`
+- `GET /api/reminders`
+- `POST /api/photos/upload-url`
+- `POST /api/photos/metadata`
+- `GET /api/photos/{photoId}`
+- `DELETE /api/photos/{photoId}`
+- `POST /api/devices/register`
+- `POST /api/notifications/send-test`
+
+Contenedores recomendados en Cosmos DB:
+
+- `authUsers`, partition key `/emailHash`
+- `users`, partition key `/userId`
+- `refreshTokens`, partition key `/userId`
+- `habits`, partition key `/userId`
+- `habitCompletions`, partition key `/userId`
+- `reminders`, partition key `/userId`
+- `devices`, partition key `/userId`
+- `photos`, partition key `/userId`
+
+> **NOTA DE IMPLEMENTACIÓN:** Expo no debe configurar variables de Entra, B2C, tenants ni App Registration. La app móvil solo conoce la URL pública de Azure Functions; los secretos viven en Azure Functions Application Settings.
+
+Variables públicas permitidas en Expo:
+
+- `EXPO_PUBLIC_API_BASE_URL`
+
+Variables privadas de Azure Functions Application Settings (Fase 2 - autenticación):
+
+- `JWT_ACCESS_SECRET`
+- `JWT_REFRESH_SECRET`
+- `JWT_ACCESS_EXPIRES_IN`
+- `JWT_REFRESH_EXPIRES_IN`
+- `AZURE_COSMOS_ENDPOINT`
+- `AZURE_COSMOS_KEY`
+- `AZURE_COSMOS_DATABASE_ID=kontrol-db`
+
+Variables privadas de Azure Functions (fases futuras):
+
+- `AZURE_STORAGE_ACCOUNT_NAME`
+- `AZURE_STORAGE_ACCOUNT_KEY`
+- `AZURE_STORAGE_CONTAINER_USER_PHOTOS=user-photos`
+- `AZURE_NOTIFICATION_HUB_CONNECTION_STRING`
+- `AZURE_NOTIFICATION_HUB_NAME=nh-kontrol-dev`
+- `APPLICATIONINSIGHTS_CONNECTION_STRING`
 
 ### 4.4 Justificación arquitectónica
 
-El enfoque arquitectónico elegido busca equilibrar dos necesidades: por un lado, construir un MVP
-viable, simple y funcional; por otro, dejar documentada una base técnica que permita escalar el
-proyecto en el futuro sin rediseñarlo completamente. De esta manera, el MVP se mantiene alineado
-con el alcance actual del proyecto, mientras que la arquitectura de evolución deja previsto el uso de
-NestJS, TypeORM y Postgres para una etapa posterior.
+El enfoque arquitectónico elegido busca equilibrar dos necesidades: por un lado, conservar un MVP
+viable, simple, funcional y usable sin conexión; por otro, incorporar una base cloud segura y justificable
+para autenticación, respaldo, fotos, notificaciones y monitoreo. De esta manera, Kontrol mantiene su
+experiencia local-first y evita exponer secretos de infraestructura dentro de la app móvil.
 
 ---
 
@@ -184,7 +270,7 @@ correctamente.
 
 - Consolidar la trazabilidad entre historias de usuario, requerimientos funcionales,
 requerimientos no funcionales y casos de prueba.
-- Implementar el registro de cuenta local.
+- Implementar el registro de cuenta mediante autenticación propia en Azure Functions (JWT + argon2).
 - Implementar el inicio y cierre de sesión.
 - Implementar la gestión de hábitos: crear, editar y eliminar.
 - Implementar el registro de cumplimiento diario.
@@ -194,6 +280,12 @@ requerimientos no funcionales y casos de prueba.
 - Implementar la pantalla principal de hábitos y la vista de detalle.
 - Implementar la consulta del aviso de privacidad.
 - Validar formularios, mensajes de error y estados vacíos principales.
+- Implementar autenticación propia en Azure Functions (JWT + argon2, 3 contenedores en Cosmos DB).
+- Implementar Azure Functions como backend seguro y único punto de acceso cloud.
+- Configurar Cosmos DB serverless con partición por `/userId`.
+- Configurar Blob Storage privado para fotos y generación de URLs temporales desde backend.
+- Configurar Notification Hubs para tokens nativos APNs/FCM v1.
+- Configurar Application Insights para monitoreo básico.
 
 ### 5.2 Should Have
 
@@ -202,13 +294,16 @@ requerimientos no funcionales y casos de prueba.
 - Refinar la consistencia visual de la interfaz con lineamientos iOS.
 - Desarrollar pruebas unitarias para validaciones clave y cálculo de rachas.
 - Desarrollar pruebas de integración para navegación, sesión y persistencia.
+- Implementar sincronización local-first de hábitos y cumplimientos.
+- Validar endpoints protegidos y de integración: `GET /api/health`, `GET /api/me`, `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`, `POST /api/sync/habits` y `GET /api/habits`.
 
 ### 5.3 Could Have
 
 - Mejorar microinteracciones visuales y retroalimentación al usuario.
 - Optimizar componentes reutilizables para facilitar el mantenimiento.
 - Incorporar mejoras menores de experiencia de usuario derivadas de pruebas internas.
-- Preparar un prototipo técnico de arquitectura de evolución con servicios desacoplados.
+- Mejorar seguridad con Managed Identity y Key Vault después de la primera versión funcional.
+- Incorporar flujos sociales o analítica avanzada solo si el alcance académico cambia.
 
 ### 5.4 Criterio general de priorización
 
@@ -238,7 +333,7 @@ mantener estabilidad ante cambios.
 Se enfocarán en validar componentes y funciones individuales del sistema, especialmente:
 
 - Validación de campos obligatorios,
-- Validación de credenciales,
+- Validación de sesión y tokens,
 - Lógica de creación y edición de hábitos,
 - Cálculo de rachas,
 - Control de duplicidad de cumplimiento diario,
@@ -253,6 +348,10 @@ Se utilizarán para verificar la interacción correcta entre módulos, por ejemp
 - Actualización del cumplimiento diario y recálculo de racha,
 - Edición o eliminación de hábitos con impacto en vistas de detalle y progreso,
 - Integración entre hábitos y recordatorios locales.
+- Validación de login con autenticación propia en Azure Functions (JWT + argon2) y consumo de `GET /api/me`.
+- Sincronización de hábitos con Azure Functions y Cosmos DB.
+- Subida de fotos mediante URL temporal generada por Azure Functions.
+- Registro de dispositivos en Notification Hubs.
 
 ### 6.3 Pruebas de sistema
 
@@ -264,6 +363,11 @@ evaluando:
 - Flujo completo de gestión de hábitos,
 - Consulta de progreso,
 - Funcionamiento de configuración y aviso de privacidad,
+- Autenticación, autorización y separación de datos por usuario,
+- Sincronización con comportamiento local-first,
+- Privacidad del contenedor de fotos,
+- Notificación remota de prueba,
+- Health check y logs en Application Insights,
 - Comportamiento general de la aplicación bajo condiciones normales de uso.
 
 ### 6.4 Pruebas de aceptación
@@ -283,6 +387,9 @@ Las pruebas buscarán verificar:
 - Claridad de mensajes y retroalimentación visual,
 - Consistencia de datos,
 - Persistencia correcta después de cerrar y reabrir la aplicación,
+- Rechazo de requests no autorizados en Azure Functions,
+- Ausencia de secretos privados en la app Expo,
+- Separación de datos por userId en servicios cloud,
 - Experiencia de uso simple, intuitiva y alineada con el enfoque minimalista del proyecto.
 
 ## 7. Despliegue y Mantenimiento
@@ -301,6 +408,14 @@ El despliegue de desarrollo se enfocará en:
 - demostraciones parciales por sprint,
 - control de versiones en GitHub para mantener historial, respaldo y trazabilidad de cambios.
 
+El despliegue cloud de desarrollo se organizará en fases:
+
+- Fase 1: crear Resource Group, Azure Functions, Cosmos DB, Storage Account, Notification Hubs y Application Insights, sin crear tenants externos ni App Registration móvil.
+- Fase 2: implementar backend mínimo de autenticación con `GET /api/health`, `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout` y `GET /api/me`.
+- Fase 3: conectar Expo con API client, login, sesión segura en SecureStore y endpoints protegidos.
+- Fase 4: implementar sincronización local-first de hábitos y cumplimientos con Azure Functions y Cosmos DB.
+- Fase 5: agregar fotos privadas con SAS temporal y registro de dispositivos/notificaciones con token nativo.
+
 ### 7.2 Estrategia de mantenimiento
 
 El mantenimiento del sistema se realizará por iteraciones, considerando tanto correcciones como mejoras
@@ -318,8 +433,8 @@ evolutivas. Este mantenimiento incluirá:
 limpieza de componentes.
 - Correctivo: solución de errores funcionales, visuales o de persistencia detectados durante el desarrollo
 y prueba.
-- Evolutivo: incorporación futura de nuevas capacidades, como sincronización, backend propio o
-ampliación de módulos, si el alcance del proyecto crece.
+- Evolutivo: incorporación controlada de Managed Identity, Key Vault, mejoras de sincronización,
+ampliación de módulos o nuevas capacidades si el alcance del proyecto crece.
 
 ---
 
@@ -331,10 +446,11 @@ y mantenimiento del sistema.
 
 A través de este documento, el equipo acuerda una ruta de trabajo clara para desarrollar una aplicación iOS
 orientada al seguimiento de hábitos personales, manteniendo consistencia con los requerimientos actuales del
-proyecto y reduciendo riesgos derivados de ambigüedad, retrabajo o decisiones técnicas desalineadas.
+proyecto y con la arquitectura Azure definida para autenticación, backend seguro, datos cloud, fotos privadas,
+notificaciones remotas y monitoreo.
 
 Asimismo, el documento funciona como una guía para asegurar que el desarrollo del MVP se lleve a cabo de
-forma ordenada, verificable y escalable, priorizando las funcionalidades esenciales del sistema y dejando
-documentada una base técnica que facilite su evolución futura.
+forma ordenada, verificable y escalable, priorizando las funcionalidades esenciales del sistema, conservando
+el enfoque local-first y evitando que secretos de infraestructura queden expuestos en la app móvil.
 
 ---

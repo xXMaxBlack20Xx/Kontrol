@@ -29,8 +29,8 @@ export type EditHabitInput = {
 };
 
 export type HabitRepository = {
-  create(habit: HabitRecord): Promise<void>;
-  update(habit: HabitRecord): Promise<void>;
+  create(habit: HabitRecord): Promise<HabitRecord | void>;
+  update(habit: HabitRecord): Promise<HabitRecord | void>;
   remove(habitId: string): Promise<boolean>;
   listByAccount(accountId: string): Promise<HabitRecord[]>;
 };
@@ -150,9 +150,9 @@ export async function createHabit(
       createdAt: new Date().toISOString(),
     };
 
-    await repository.create(habit);
+    const savedHabit = await repository.create(habit);
 
-    return habit;
+    return savedHabit ?? habit;
   } catch (error) {
     if (error instanceof CreateHabitError) {
       throw error;
@@ -188,9 +188,9 @@ export async function editHabit(
           : currentHabit.reminderTime,
     };
 
-    await repository.update(updatedHabit);
+    const savedHabit = await repository.update(updatedHabit);
 
-    return updatedHabit;
+    return savedHabit ?? updatedHabit;
   } catch (error) {
     if (error instanceof EditHabitError) {
       throw error;

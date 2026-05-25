@@ -1,0 +1,21 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "JWT_ACCESS_SECRET": "replace_me",
+    "JWT_REFRESH_SECRET": "replace_me",
+    "JWT_ACCESS_EXPIRES_IN": "15m",
+    "JWT_REFRESH_EXPIRES_IN": "30d",
+    "AZURE_COSMOS_ENDPOINT": "https://your-cosmos.documents.azure.com:443/",
+    "AZURE_COSMOS_KEY": "replace_me",
+    "AZURE_COSMOS_DATABASE_ID": "kontrol-db",
+    "AZURE_STORAGE_ACCOUNT_NAME": "replace_me",
+    "AZURE_STORAGE_ACCOUNT_KEY": "replace_me",
+    "AZURE_STORAGE_CONTAINER_USER_PHOTOS": "user-photos",
+    "AZURE_NOTIFICATION_HUB_CONNECTION_STRING": "replace_me",
+    "AZURE_NOTIFICATION_HUB_NAME": "nh-kontrol-dev",
+    "APPLICATIONINSIGHTS_CONNECTION_STRING": "replace_me",
+    "APP_CORS_ALLOWED_ORIGINS": "*"
+  }
+}

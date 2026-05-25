@@ -11,12 +11,12 @@
 
 ## Files changed
 
+## Environment/configuration changed
+
 ## Validation performed
 
 ## Manual validation
 
+## Cloud validation
+
 ## Remaining risks
-
-## Save the file
-
-## Step 10 — Commit `AGENTS.md`

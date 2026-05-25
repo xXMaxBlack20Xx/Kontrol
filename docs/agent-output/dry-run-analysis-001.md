@@ -1,70 +1,88 @@
 1. MVP Scope Summary
-Kontrol MVP is a local-first iOS habit tracker built with React Native + Expo. It must work without backend, cloud sync, external devices, social features, widgets, Apple Watch, predictive analytics, or remote push notifications.
+Kontrol is an iOS-focused habit tracker built with React Native + Expo. The updated plan keeps the app local-first while adding a secure Azure backend for authentication, synchronization, photos, remote notifications, and monitoring.
+
 In scope:
 
-- Local account registration.
-- Login, logout, and protected session flow.
-- Habit CRUD: create, edit, delete.
-- Daily habit completion.
-- Duplicate daily completion prevention.
-- Streak calculation.
-- Basic habit detail, history, and progress visualization.
-- Local reminders.
-- Settings and privacy notice access.
-- Local persistence for account, session, habits, completions, reminders, and settings.
+- Local-first habit tracking that continues working without internet.
+- Custom authentication built into Azure Functions (JWT + argon2) for registration, login, account recovery, and JWT issuance.
+- Azure Functions as the only secure backend entry point for cloud services.
+- Azure Cosmos DB for NoSQL for cloud data: users, habits, completions, reminders, devices, and photo metadata.
+- Azure Blob Storage for private profile or habit photos.
+- Azure Notification Hubs for native APNs/FCM v1 push notifications.
+- Application Insights for backend logs and diagnostics.
+- No Cosmos DB, Storage, or Notification Hubs secrets inside Expo.
+
+Out of scope:
+
+- Social features.
+- iOS widgets.
+- Apple Watch integration.
+- Predictive analytics.
+- Real-time multi-device synchronization.
+- Direct mobile access to Cosmos DB, Blob Storage, or Notification Hubs using private keys.
 
 1. Main Modules
-The artifacts consistently define these modules:
+The artifacts now define these modules:
 
-- Gestión de cuenta local: HU-01, RF-01, CP-01.
-- Inicio y cierre de sesión: HU-02, HU-03, RF-02, RF-03, CP-02, CP-03.
-- Gestión de hábitos: HU-04, HU-05, HU-06, RF-04, RF-05, RF-06, CP-04, CP-05, CP-06.
-- Registro de cumplimiento diario: HU-07, RF-07, CP-07.
-- Visualización de rachas, detalle y progreso: HU-08, HU-09, RF-08, RF-09, CP-08, CP-09.
-- Recordatorios locales: HU-10, RF-10, CP-10.
+- Gestión de cuenta y autenticación cloud: HU-01, HU-02, HU-03, HU-12, RF-01, RF-02, RF-03, RF-12, CP-01, CP-02, CP-03, CP-12.
+- Gestión de hábitos local-first y sincronización: HU-04, HU-05, HU-06, HU-13, RF-04, RF-05, RF-06, RF-13, CP-04, CP-05, CP-06, CP-13.
+- Registro de cumplimiento diario y progreso: HU-07, HU-08, HU-09, RF-07, RF-08, RF-09, RF-13, CP-07, CP-08, CP-09, CP-13.
+- Recordatorios locales y push remotas: HU-10, HU-15, RF-10, RF-15, CP-10, CP-15.
+- Fotos privadas: HU-14, RF-14, CP-14.
 - Configuración y aviso de privacidad: HU-11, RF-11, CP-11.
-- Local persistence layer: required across all modules, especially account/session/habits/completions/reminders.
+- Observabilidad: HU-16, RF-16, CP-16.
 
 1. Suggested Implementation Order
-1. Clean setup and foundation: Expo compatibility, navigation shell, module folders, local persistence abstraction, test setup, traceability convention.
-1. HU-01: local account registration.
-1. HU-02: login and session persistence.
-1. HU-03: logout and protected private screens.
-1. HU-11: privacy notice access, because HU-01 depends on privacy acceptance.
-1. HU-04: create habit and empty state.
-1. HU-05: edit habit while preserving ID/history.
-1. HU-06: delete habit and remove it from related views/reminders.
-1. HU-07: mark daily completion, prevent duplicate completion, recalculate streak.
-1. HU-08: habit detail, current streak, basic history.
-1. HU-09: basic progress visualization.
-1. HU-10: local reminders, permissions, create/edit/delete reminder.
+1. Azure foundation: Resource Group, Azure Functions, Cosmos DB, Storage Account, Notification Hubs, Application Insights.
+1. Backend foundation: Azure Functions Runtime 4.x with Node.js 22, `GET /api/health`, Application Settings, and Application Insights.
+1. Custom auth implementation: argon2 password hashing, JWT access + refresh tokens, `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`.
+1. Cosmos DB integration: database `kontrol-db`, containers `authUsers`, `users`, `refreshTokens`, then `habits`, `habitCompletions`, etc.
+1. App Expo auth: API client with JWT storage in SecureStore, protected routes, auth context.
+1. Local-first sync: pending operation queue and retry when connectivity returns.
+1. Photos: private `user-photos` container, `POST /api/photos/upload-url`, metadata in Cosmos DB.
+1. Devices and notifications: native token with `getDevicePushTokenAsync`, `POST /api/devices/register`, `POST /api/notifications/send-test`.
+1. Privacy and testing: update privacy notice and execute CP-12 through CP-16.
+
 1. Traceability Pattern
 Use one implementation record per story/change:
 HU RF RNF CP Scope Files changed Validation
-HU-04 RF-04, RF-04.1, RF-04.2, RF-04.3, RF-04.4 RNF-04, RNF-04.1, RNF-04.2 CP-04 Create habit screen, business logic, persistence, tests npm test, Expo checks if applicable
+HU-13 RF-13, RF-13.1, RF-13.2, RF-13.3 RNF-13 CP-13 Local-first sync, Azure Functions endpoints, Cosmos DB containers npm test, API validation, Expo checks if applicable
+
 Recommended rule:
 
 - Every feature PR/change should cite HU + RF/RNF + CP.
 - Business logic tests should map to RF/RNF behavior.
-- UI/integration tests or manual checks should map to CP happy, alternate, and failure paths.
+- API/integration checks should map to CP happy, alternate, and failure paths.
 - Final validation should report files changed, commands run, result, and remaining risks.
 
-1. Recommended Next User Story After Clean Setup
-HU-01: Registrar una cuenta local.
-Reason: it is the first functional dependency for the app. Login, protected sessions, habit ownership, privacy acceptance, and local persistence all build naturally from it.
-Recommended first traceability target:
+1. Recommended Next Step
+Step 2: Backend authentication API (custom JWT + argon2 inside Azure Functions).
 
-- HU-01
-- RF-01, RF-01.1, RF-01.2, RF-01.3, RF-01.4
-- RNF-01, RNF-01.1, RNF-01.2
-- CP-01
+Expected backend environment variables after this step:
+
+- `JWT_ACCESS_SECRET`
+- `JWT_REFRESH_SECRET`
+- `JWT_ACCESS_EXPIRES_IN`
+- `JWT_REFRESH_EXPIRES_IN`
+- `AZURE_COSMOS_ENDPOINT`
+- `AZURE_COSMOS_KEY`
+- `AZURE_COSMOS_DATABASE_ID`
+
+Expo only needs:
+
+- `EXPO_PUBLIC_API_BASE_URL`
+
+Do not add backend secrets to Expo:
+
+- `AZURE_COSMOS_KEY`
+- `AZURE_STORAGE_CONNECTION_STRING`
+- `AZURE_NOTIFICATION_HUB_CONNECTION_STRING`
 
 1. Inconsistencies Or Risks
 
-- Persistence conflict: user stories mention local Postgres as the main local persistence mechanism, while the lifecycle document treats Postgres mainly as future/evolution architecture. For an Expo local-first iOS MVP, embedded Postgres is a technical risk and should be clarified before implementation.
-- Traceability gap: the test plan matrix maps CP to RF, but not to HU or RNF; AGENTS requires full HU/RF/RNF/CP traceability.
-- Template leftovers: some artifact text references “Endure” and “BienaTech”, which appears inconsistent with Kontrol/Chiapanecos.
-- Role wording issues: HU-02 and HU-06 describe the actor as “usuario nuevo” where “usuario registrado” or “usuario del sistema” would be more accurate.
-- Test statuses are all pending, so there is no current validation evidence.
-- Local reminders depend on notification permissions and Expo-compatible APIs; implementation should avoid native dependencies or ejecting.
-- Privacy notice is both required during registration and accessed from settings, so HU-01 has a dependency on at least minimal HU-11 content/availability.
+- Expo Go cannot validate native push tokens for Notification Hubs; use development builds or native builds.
+- The backend must reject requests without valid JWT before querying Cosmos DB, Blob Storage, or Notification Hubs.
+- Cosmos DB, Blob Storage, and Notification Hubs credentials must stay in Azure Functions Application Settings, with Managed Identity and Key Vault as future hardening.
+- The app must remain usable without internet, so cloud failures should not block local habit operations.
+- The privacy notice must disclose Azure storage of app data and custom authentication.
+- The current documentation defines custom JWT + argon2 authentication in Azure Functions, without Microsoft Entra External ID, Azure AD B2C, external tenants, or mobile App Registration. See `docs/architecture/fase-2-backend-autenticacion.md`.

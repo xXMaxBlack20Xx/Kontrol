@@ -1,11 +1,14 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { AppHeader } from '@/components/ui/app-header';
-import { BrandMark } from '@/components/ui/brand-mark';
+import { PrimaryButton } from '@/components/ui/buttons';
 import { Card } from '@/components/ui/card';
 import { ScreenContainer } from '@/components/ui/screen-container';
-import { colors, radius, spacing } from '@/components/ui/theme';
+import { radius, spacing, typography } from '@/components/ui/theme';
+import { useTheme } from '@/components/ui/theme-context';
 
 const sections = [
   {
@@ -34,40 +37,75 @@ const sections = [
   },
 ];
 
+const blueScreenGradientLight = {
+  colors: ['#C8E0FE', '#E2EDFC', '#F4F8FF', '#F4F8FF'],
+  locations: [0, 0.18, 0.4, 1],
+} as const;
+
+const blueScreenGradientDark = {
+  colors: ['#0B1E36', '#0D1520', '#08090C', '#08090C'],
+  locations: [0, 0.2, 0.44, 1],
+} as const;
+
 export default function PrivacyScreen() {
+  const router = useRouter();
+  const { colors, isDark } = useTheme();
+  const styles = getStyles(colors);
+  const activeGradient = isDark ? blueScreenGradientDark : blueScreenGradientLight;
+
   return (
-    <ScreenContainer contentStyle={styles.content} edges={['bottom']}>
-      <BrandMark tagline="Privacidad local" />
+    <LinearGradient
+      colors={[...activeGradient.colors]}
+      locations={[...activeGradient.locations]}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+      style={styles.gradientRoot}
+    >
+      <ScreenContainer style={{ backgroundColor: 'transparent' }} contentStyle={styles.content} edges={['bottom']}>
+        <AppHeader
+          description="Kontrol funciona localmente en este MVP. No hay backend, sincronización en la nube ni funciones sociales."
+          title="Aviso de privacidad"
+        />
 
-      <AppHeader
-        description="Kontrol funciona localmente en este MVP. No hay backend, sincronización en la nube ni funciones sociales."
-        title="Aviso de privacidad"
-      />
+        <View style={styles.sectionList}>
+          {sections.map((section) => (
+            <Card key={section.title} style={styles.card}>
+              <View style={styles.iconFrame}>
+                <MaterialIcons color={colors.textPrimary} name={section.icon} size={22} />
+              </View>
+              <View style={styles.cardText}>
+                <Text style={styles.sectionTitle}>{section.title}</Text>
+                <Text style={styles.body}>{section.body}</Text>
+              </View>
+            </Card>
+          ))}
+        </View>
 
-      <View style={styles.sectionList}>
-        {sections.map((section) => (
-          <Card key={section.title} style={styles.card}>
-            <View style={styles.iconFrame}>
-              <MaterialIcons color={colors.textPrimary} name={section.icon} size={22} />
-            </View>
-            <View style={styles.cardText}>
-              <Text style={styles.sectionTitle}>{section.title}</Text>
-              <Text style={styles.body}>{section.body}</Text>
-            </View>
-          </Card>
-        ))}
-      </View>
-    </ScreenContainer>
+        <PrimaryButton
+          onPress={() => router.back()}
+          title="Entendido"
+          style={{
+            backgroundColor: isDark ? '#0A84FF' : '#007AFF',
+            marginTop: spacing.sm,
+          }}
+          textColor="#FFFFFF"
+        />
+      </ScreenContainer>
+    </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
+  gradientRoot: {
+    flex: 1,
+  },
   content: {
     gap: spacing.xxl,
     paddingTop: spacing.xl,
+    paddingBottom: spacing.xl,
   },
   sectionList: {
-    gap: 10,
+    gap: 12,
   },
   card: {
     alignItems: 'flex-start',
@@ -87,11 +125,14 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   sectionTitle: {
+    fontFamily: typography.fontFamily,
     color: colors.textPrimary,
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: typography.weights.heavy,
+    letterSpacing: -0.4,
   },
   body: {
+    fontFamily: typography.fontFamily,
     color: colors.textSecondary,
     fontSize: 15,
     lineHeight: 22,

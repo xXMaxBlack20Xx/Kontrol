@@ -11,7 +11,8 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import { colors, radius, spacing } from './theme';
+import { radius, spacing, typography } from './theme';
+import { useTheme } from './theme-context';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -32,14 +33,16 @@ type SelectPillProps = {
 };
 
 export function TextInputField({ icon, label, style, ...textInputProps }: TextInputFieldProps) {
+  const { colors } = useTheme();
+
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.inputShell}>
+      <Text style={[styles.label, { color: colors.textPrimary }]}>{label}</Text>
+      <View style={[styles.inputShell, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
         {icon ? <MaterialIcons color={colors.textTertiary} name={icon} size={20} /> : null}
         <TextInput
           placeholderTextColor={colors.textTertiary}
-          style={[styles.input, style]}
+          style={[styles.input, { color: colors.textPrimary }, style]}
           {...textInputProps}
         />
       </View>
@@ -48,13 +51,30 @@ export function TextInputField({ icon, label, style, ...textInputProps }: TextIn
 }
 
 export function FeedbackMessage({ message, type = 'error' }: FeedbackMessageProps) {
+  const { colors } = useTheme();
+
+  const feedbackStyles = {
+    error: {
+      backgroundColor: colors.dangerBackground,
+      color: colors.dangerText,
+    },
+    success: {
+      backgroundColor: colors.successBackground,
+      color: colors.successText,
+    },
+    info: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderWidth: 1,
+      color: colors.textSecondary,
+    },
+  };
+
   return (
     <Text
       style={[
         styles.feedback,
-        type === 'error' && styles.feedbackError,
-        type === 'success' && styles.feedbackSuccess,
-        type === 'info' && styles.feedbackInfo,
+        feedbackStyles[type],
       ]}>
       {message}
     </Text>
@@ -62,16 +82,22 @@ export function FeedbackMessage({ message, type = 'error' }: FeedbackMessageProp
 }
 
 export function SelectPill({ label, onPress, selected }: SelectPillProps) {
+  const { colors } = useTheme();
+
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
         styles.selectPill,
-        selected && styles.selectPillSelected,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.borderStrong,
+        },
+        selected && [styles.selectPillSelected, { backgroundColor: colors.primary, borderColor: colors.primary }],
         pressed && styles.pressed,
       ]}>
-      <Text style={[styles.selectPillText, selected && styles.selectPillTextSelected]}>{label}</Text>
+      <Text style={[styles.selectPillText, { color: colors.textPrimary }, selected && { color: colors.primaryText }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -91,14 +117,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   label: {
-    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },
   inputShell: {
     alignItems: 'center',
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.border,
     borderRadius: radius.lg,
     borderWidth: 1,
     flexDirection: 'row',
@@ -107,7 +130,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   input: {
-    color: colors.textPrimary,
     flex: 1,
     fontSize: 17,
     minHeight: 52,
@@ -118,42 +140,21 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     padding: spacing.md,
   },
-  feedbackError: {
-    backgroundColor: colors.dangerBackground,
-    color: colors.dangerText,
-  },
-  feedbackSuccess: {
-    backgroundColor: colors.successBackground,
-    color: colors.successText,
-  },
-  feedbackInfo: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    color: colors.textSecondary,
-  },
   selectPill: {
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
-    borderColor: colors.borderStrong,
     borderRadius: radius.pill,
     borderWidth: 1,
     justifyContent: 'center',
     minHeight: 44,
     paddingHorizontal: 18,
   },
-  selectPillSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
+  selectPillSelected: {},
   selectPillText: {
-    color: colors.textPrimary,
+    fontFamily: typography.fontFamily,
     fontSize: 15,
-    fontWeight: '700',
-  },
-  selectPillTextSelected: {
-    color: colors.primaryText,
+    fontWeight: typography.weights.semibold,
+    letterSpacing: -0.3,
   },
   pressed: {
     opacity: 0.72,

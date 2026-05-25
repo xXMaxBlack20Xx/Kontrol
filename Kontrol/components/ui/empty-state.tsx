@@ -3,7 +3,8 @@ import { ComponentProps, ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Card } from './card';
-import { colors, radius, spacing } from './theme';
+import { radius, spacing, typography } from './theme';
+import { useTheme } from './theme-context';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -15,14 +16,16 @@ type EmptyStateProps = {
 };
 
 export function EmptyState({ action, description, icon = 'inbox', title }: EmptyStateProps) {
+  const { colors } = useTheme();
+
   return (
     <Card style={styles.emptyState}>
-      <View style={styles.iconFrame}>
+      <View style={[styles.iconFrame, { backgroundColor: colors.surfaceMuted }]}>
         <MaterialIcons color={colors.textPrimary} name={icon} size={22} />
       </View>
       <View style={styles.copy}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.description}>{description}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
+        <Text style={[styles.description, { color: colors.textSecondary }]}>{description}</Text>
       </View>
       {action}
     </Card>
@@ -35,7 +38,6 @@ const styles = StyleSheet.create({
   },
   iconFrame: {
     alignItems: 'center',
-    backgroundColor: colors.surfaceMuted,
     borderRadius: radius.md,
     height: 42,
     justifyContent: 'center',
@@ -45,12 +47,12 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   title: {
-    color: colors.textPrimary,
+    fontFamily: typography.fontFamily,
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: typography.weights.heavy,
+    letterSpacing: -0.5,
   },
   description: {
-    color: colors.textSecondary,
     fontSize: 15,
     lineHeight: 21,
   },

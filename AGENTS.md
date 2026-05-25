@@ -15,12 +15,15 @@ Before planning or implementing any feature, agents must inspect the relevant pr
 - `docs/user-stories/ios-historias-usuario-requerimientos-kontrol.md`
 - `docs/test-plans/ios-plan-pruebas-kontrol.md`
 - `docs/project/aps-ciclo-de-vida-del-desarrollo-ios.md`
+- `docs/architecture/fase-2-backend-autenticacion.md`
 
 The user stories document defines the HU, RF, RNF, and acceptance criteria.
 
 The test plan defines the CP test cases, inputs, preconditions, expected results, and validation behavior.
 
 The project lifecycle document defines MVP scope, architecture, tools, testing strategy, and prioritization.
+
+The architecture document defines the Phase 2 backend implementation (Azure Functions + Cosmos DB custom authentication) without Microsoft Entra External ID, Azure AD B2C, external tenants, or mobile App Registration.
 
 ## Mandatory traceability
 
@@ -42,6 +45,7 @@ Inside MVP scope:
 - Local account registration
 - Login and logout
 - Local session protection
+- Backend authentication API (Azure Functions + Cosmos DB, custom JWT + argon2 auth)
 - Habit creation
 - Habit editing
 - Habit deletion
@@ -93,6 +97,20 @@ The MVP should follow a local-first architecture with three logical layers:
 Business logic should be testable without rendering UI screens.
 
 UI components should not directly own complex persistence logic.
+
+## Backend architecture (Phase 2)
+
+The backend lives in `docs/architecture/fase-2-backend-autenticacion.md`.
+
+Key rules:
+- **Microsoft Entra External ID is NOT used** (student Azure account limitation).
+- **Azure AD B2C, external tenants, and mobile App Registration are NOT used**.
+- Authentication is **custom-built** inside Azure Functions using:
+  - **argon2** for password hashing
+  - **JWT** (jsonwebtoken) for access + refresh tokens
+  - **SHA-256** for refresh token hashing in Cosmos DB
+- The functional behavior covers register, login, refresh, logout, protected endpoints, JWT validation, and userId extraction from `sub`.
+- Agents must reference `docs/architecture/fase-2-backend-autenticacion.md` for the actual auth implementation details.
 
 ## Expo and React Native rules
 

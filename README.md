@@ -16,7 +16,7 @@ The goal of the app is to help users answer three questions quickly:
 - Which habits have I already completed?
 - How consistent have I been over time?
 
-Kontrol is currently focused on a local-first MVP. This means the app does not depend on a backend, cloud synchronization, social features, widgets, or external device integrations.
+Kontrol is currently focused on a local-first MVP, with a Phase 2 Azure backend for authentication and protected cloud services. The app must keep working locally for habit tracking and must never include Cosmos DB, Storage, or Notification Hubs secrets.
 
 ---
 
@@ -25,6 +25,8 @@ Kontrol is currently focused on a local-first MVP. This means the app does not d
 ### Local Account Management
 
 Users can create a local account using an email and password. The app validates the registration form, requires acceptance of the privacy notice, and stores the account locally.
+
+Phase 2 replaces local credential validation with custom authentication in Azure Functions using argon2 password hashes, JWT access tokens, refresh tokens, and Cosmos DB containers `authUsers`, `users`, and `refreshTokens`.
 
 ### Login and Session Flow
 
@@ -75,6 +77,8 @@ The privacy notice is available from the app and must be accepted during registr
 - **Local persistence**
 - **Local notifications**
 - **React Context for session/auth state**
+- **Azure Functions** for Phase 2 authentication and protected APIs
+- **Azure Cosmos DB for NoSQL** behind Azure Functions
 
 ---
 
@@ -97,13 +101,14 @@ The privacy notice is available from the app and must be accepted during registr
 - Settings screen
 - Privacy notice screen
 - Minimal iOS-inspired UI
+- Phase 2 backend authentication API: `GET /api/health`, `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`, `GET /api/me`
 
 ### Out of Scope
 
 The current MVP does not include:
 
 - Cloud synchronization
-- Backend API
+- Habit, photo, and notification backend APIs beyond Phase 2 authentication
 - Social features
 - Habit sharing
 - iOS widgets

@@ -7,8 +7,10 @@ import { AppHeader } from '@/components/ui/app-header';
 import { DestructiveButton, PrimaryButton } from '@/components/ui/buttons';
 import { Card } from '@/components/ui/card';
 import { FeedbackMessage, SelectPill, TextInputField } from '@/components/ui/form';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenContainer } from '@/components/ui/screen-container';
-import { colors, spacing } from '@/components/ui/theme';
+import { gradients, spacing, typography } from '@/components/ui/theme';
+import { useTheme } from '@/components/ui/theme-context';
 import { useAuth } from '@/features/account/auth-context';
 import {
   deleteHabit,
@@ -19,7 +21,7 @@ import {
   editHabitErrorMessages,
   type HabitRecord,
 } from '@/features/habits/habit';
-import { fileHabitRepository } from '@/features/habits/local-habit-repository';
+import { remoteHabitRepository } from '@/features/habits/remote-habit-repository';
 import { habitDetailHref } from '@/features/navigation/routes';
 import { expoNotificationScheduler } from '@/features/reminders/expo-notification-scheduler';
 import { fileReminderRepository } from '@/features/reminders/local-reminder-repository';
@@ -31,11 +33,14 @@ import {
   validateReminderTime,
   type ReminderRecord,
 } from '@/features/reminders/reminder';
+import { deleteRemoteReminderByHabitId, syncRemoteReminder } from '@/features/reminders/remote-reminder-service';
 
 export default function EditHabitScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { user } = useAuth();
+  const { colors, isDark } = useTheme();
+  const styles = getStyles(colors, isDark);
   const habitId = Array.isArray(id) ? id[0] : id;
   const [habit, setHabit] = useState<HabitRecord | null>(null);
   const [reminder, setReminder] = useState<ReminderRecord | null>(null);
@@ -63,7 +68,7 @@ export default function EditHabitScreen() {
 
     try {
       const [storedHabits, storedReminder] = await Promise.all([
-        fileHabitRepository.listByAccount(user.accountId),
+        remoteHabitRepository.listByAccount(user.accountId),
         fileReminderRepository.findByHabitId(habitId),
       ]);
       const selectedHabit = storedHabits.find((currentHabit) => currentHabit.id === habitId) ?? null;
@@ -78,7 +83,7 @@ export default function EditHabitScreen() {
         setEditHabitTarget(selectedHabit.target ?? '');
         setEditHabitReminderTime(storedReminder?.time ?? '');
       } else {
-        setMessage('No se encontró este hábito local.');
+        setMessage('No se encontró este hábito en Kontrol.');
       }
     } catch {
       setHabit(null);
@@ -122,8 +127,13 @@ export default function EditHabitScreen() {
         expoNotificationScheduler,
       );
       setReminder(updatedReminder);
+      syncRemoteReminder({
+        habitId: updatedHabit.id,
+        habitName: updatedHabit.name,
+        time: updatedReminder.time,
+      }).catch(() => undefined);
 
-      return editHabit(updatedHabit, { reminderTime: updatedReminder.time }, fileHabitRepository);
+      return editHabit(updatedHabit, { reminderTime: updatedReminder.time }, remoteHabitRepository);
     }
 
     if (reminder) {
@@ -133,11 +143,12 @@ export default function EditHabitScreen() {
         expoNotificationScheduler,
       );
       setReminder(null);
+      deleteRemoteReminderByHabitId(updatedHabit.id).catch(() => undefined);
 
-      return editHabit(updatedHabit, { reminderTime: '' }, fileHabitRepository);
+      return editHabit(updatedHabit, { reminderTime: '' }, remoteHabitRepository);
     }
 
-    return editHabit(updatedHabit, { reminderTime: '' }, fileHabitRepository);
+    return editHabit(updatedHabit, { reminderTime: '' }, remoteHabitRepository);
   }
 
   async function handleSaveHabitEdit() {
@@ -159,7 +170,7 @@ export default function EditHabitScreen() {
           reminderTime: habit.reminderTime,
           target: editHabitTarget,
         },
-        fileHabitRepository,
+        remoteHabitRepository,
       );
       const syncedHabit = await syncReminder(editedHabit);
 
@@ -207,7 +218,7 @@ export default function EditHabitScreen() {
     setIsSuccess(false);
 
     try {
-      const deletedHabit = await deleteHabit(habit, true, fileHabitRepository);
+      const deletedHabit = await deleteHabit(habit, true, remoteHabitRepository);
 
       if (reminder) {
         try {
@@ -216,6 +227,7 @@ export default function EditHabitScreen() {
             fileReminderRepository,
             expoNotificationScheduler,
           );
+          deleteRemoteReminderByHabitId(deletedHabit.id).catch(() => undefined);
         } catch {
           setMessage('El hábito fue eliminado, pero no se pudo cancelar su recordatorio local.');
         }
@@ -239,8 +251,22 @@ export default function EditHabitScreen() {
     return <SessionLoadingScreen />;
   }
 
+  const activeGradient = isDark ? gradients.blueScreenDark : gradients.blueScreenLight;
+
   return (
-    <ScreenContainer contentStyle={styles.content} edges={['top']} keyboardAvoiding>
+    <LinearGradient
+      colors={[...activeGradient.colors]}
+      locations={[...activeGradient.locations]}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+      style={styles.gradientRoot}
+    >
+      <ScreenContainer
+        style={{ backgroundColor: 'transparent' }}
+        contentStyle={styles.content}
+        edges={['top']}
+        keyboardAvoiding
+      >
       <AppHeader
         backLabel="Detalle"
         eyebrow="Editar hábito"
@@ -313,13 +339,18 @@ export default function EditHabitScreen() {
           </View>
         </Card>
       ) : null}
-    </ScreenContainer>
+      </ScreenContainer>
+    </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
+  gradientRoot: {
+    flex: 1,
+  },
   content: {
     gap: spacing.lg,
+    paddingBottom: spacing.lg,
   },
   loadingRow: {
     alignItems: 'center',
@@ -329,6 +360,7 @@ const styles = StyleSheet.create({
     minHeight: 54,
   },
   loadingText: {
+    fontFamily: typography.fontFamily,
     color: colors.textSecondary,
     fontSize: 15,
     fontWeight: '600',

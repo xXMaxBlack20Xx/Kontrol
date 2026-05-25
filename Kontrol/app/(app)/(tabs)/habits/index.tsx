@@ -8,8 +8,10 @@ import { AppHeader } from '@/components/ui/app-header';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FeedbackMessage } from '@/components/ui/form';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenContainer } from '@/components/ui/screen-container';
-import { colors, spacing } from '@/components/ui/theme';
+import { gradients, spacing, typography } from '@/components/ui/theme';
+import { useTheme } from '@/components/ui/theme-context';
 import { useAuth } from '@/features/account/auth-context';
 import {
   CompleteHabitError,
@@ -25,16 +27,18 @@ import {
   editHabit,
   type HabitRecord,
 } from '@/features/habits/habit';
-import { fileCompletionRepository } from '@/features/habits/local-completion-repository';
-import { fileHabitRepository } from '@/features/habits/local-habit-repository';
+import { remoteCompletionRepository } from '@/features/habits/remote-completion-repository';
+import { remoteHabitRepository } from '@/features/habits/remote-habit-repository';
 import { habitDetailHref, habitEditHref } from '@/features/navigation/routes';
 import { expoNotificationScheduler } from '@/features/reminders/expo-notification-scheduler';
 import { fileReminderRepository } from '@/features/reminders/local-reminder-repository';
 import { deleteHabitReminder, type ReminderRecord } from '@/features/reminders/reminder';
+import { deleteRemoteReminderByHabitId } from '@/features/reminders/remote-reminder-service';
 
 export default function HabitsScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { colors, isDark } = useTheme();
   const [habits, setHabits] = useState<HabitRecord[]>([]);
   const [completionByHabit, setCompletionByHabit] = useState<Record<string, HabitCompletionSummary>>({});
   const [reminderByHabit, setReminderByHabit] = useState<Record<string, ReminderRecord>>({});
@@ -58,8 +62,8 @@ export default function HabitsScreen() {
 
     try {
       const [storedHabits, completions, reminders] = await Promise.all([
-        fileHabitRepository.listByAccount(user.accountId),
-        fileCompletionRepository.listByAccount(user.accountId),
+        remoteHabitRepository.listByAccount(user.accountId),
+        remoteCompletionRepository.listByAccount(user.accountId),
         fileReminderRepository.listByAccount(user.accountId),
       ]);
 
@@ -71,7 +75,7 @@ export default function HabitsScreen() {
       setCompletionByHabit({});
       setReminderByHabit({});
       setIsSuccess(false);
-      setMessage('No se pudieron cargar tus hábitos locales. Intenta nuevamente.');
+      setMessage('No se pudieron cargar tus hábitos desde Kontrol. Intenta nuevamente.');
     } finally {
       setIsLoading(false);
     }
@@ -89,7 +93,7 @@ export default function HabitsScreen() {
     setIsSuccess(false);
 
     try {
-      const result = await completeHabitForToday(habit, fileCompletionRepository);
+      const result = await completeHabitForToday(habit, remoteCompletionRepository);
 
       setCompletionByHabit((currentCompletionByHabit) => ({
         ...currentCompletionByHabit,
@@ -134,7 +138,7 @@ export default function HabitsScreen() {
     setIsSuccess(false);
 
     try {
-      const deletedHabit = await deleteHabit(habit, true, fileHabitRepository);
+      const deletedHabit = await deleteHabit(habit, true, remoteHabitRepository);
       const reminder = reminderByHabit[deletedHabit.id];
       let reminderWarning: string | null = null;
 
@@ -145,6 +149,7 @@ export default function HabitsScreen() {
             fileReminderRepository,
             expoNotificationScheduler,
           );
+          deleteRemoteReminderByHabitId(deletedHabit.id).catch(() => undefined);
         } catch {
           reminderWarning = 'El hábito fue eliminado, pero no se pudo cancelar su recordatorio local.';
         }
@@ -179,7 +184,7 @@ export default function HabitsScreen() {
   }
 
   async function clearReminderTime(habit: HabitRecord) {
-    const updatedHabit = await editHabit(habit, { reminderTime: '' }, fileHabitRepository);
+    const updatedHabit = await editHabit(habit, { reminderTime: '' }, remoteHabitRepository);
 
     setHabits((currentHabits) =>
       currentHabits.map((currentHabit) => (currentHabit.id === updatedHabit.id ? updatedHabit : currentHabit)),
@@ -196,6 +201,7 @@ export default function HabitsScreen() {
         fileReminderRepository,
         expoNotificationScheduler,
       );
+      deleteRemoteReminderByHabitId(habit.id).catch(() => undefined);
       await clearReminderTime(habit);
 
       setReminderByHabit((currentReminders) => {
@@ -227,11 +233,23 @@ export default function HabitsScreen() {
     return <SessionLoadingScreen />;
   }
 
+  const activeGradient = isDark ? gradients.blueScreenDark : gradients.blueScreenLight;
+
   return (
-    <ScreenContainer contentStyle={styles.content} edges={['top']}>
+    <LinearGradient
+      colors={[...activeGradient.colors]}
+      locations={[...activeGradient.locations]}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+      style={styles.gradientRoot}
+    >
+      <ScreenContainer
+        style={{ backgroundColor: 'transparent' }}
+        contentStyle={styles.content}
+        edges={['top']}
+      >
       <AppHeader
-        description={`Sesión activa para ${user.email}. Registra avances diarios desde tu almacenamiento local.`}
-        eyebrow="Kontrol"
+        description={`Sesión activa para ${user.email}. Registra avances diarios sincronizados con Kontrol.`}
         title="Hábitos"
       />
 
@@ -247,7 +265,7 @@ export default function HabitsScreen() {
       {isLoading ? (
         <View style={styles.loadingRow}>
           <ActivityIndicator color={colors.textPrimary} />
-          <Text style={styles.loadingText}>Cargando hábitos...</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Cargando hábitos...</Text>
         </View>
       ) : null}
 
@@ -339,11 +357,15 @@ export default function HabitsScreen() {
           />
         );
       })}
-    </ScreenContainer>
+      </ScreenContainer>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientRoot: {
+    flex: 1,
+  },
   content: {
     gap: spacing.lg,
   },
@@ -355,7 +377,7 @@ const styles = StyleSheet.create({
     minHeight: 54,
   },
   loadingText: {
-    color: colors.textSecondary,
+    fontFamily: typography.fontFamily,
     fontSize: 15,
     fontWeight: '600',
   },
