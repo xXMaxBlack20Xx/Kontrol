@@ -26,14 +26,24 @@ export async function createPhotoMetadata(req: HttpRequest, context: InvocationC
       return badRequest("Invalid blobPath for authenticated user");
     }
 
-    const habit = await readItem<HabitDocument>(habitsContainer(), parsed.data.habitId, userId);
-    if (!habit || habit.isDeleted) return notFound("Habit not found");
+    if (parsed.data.purpose === "profile") {
+      if (!parsed.data.blobPath.startsWith(`${userId}/profile/`)) return badRequest("Invalid profile photo blobPath");
+    } else {
+      const habitId = parsed.data.habitId;
+      if (!habitId) return badRequest("habitId is required for habit cover photos");
+
+      if (!parsed.data.blobPath.startsWith(`${userId}/habits/${habitId}/`)) return badRequest("Invalid habit photo blobPath");
+
+      const habit = await readItem<HabitDocument>(habitsContainer(), habitId, userId);
+      if (!habit || habit.isDeleted) return notFound("Habit not found");
+    }
 
     const now = new Date().toISOString();
     const photo: PhotoDocument = {
       id: parsed.data.photoId,
       userId,
-      habitId: parsed.data.habitId,
+      habitId: parsed.data.habitId ?? null,
+      purpose: parsed.data.purpose,
       blobPath: parsed.data.blobPath,
       contentType: parsed.data.contentType,
       sizeBytes: parsed.data.sizeBytes,

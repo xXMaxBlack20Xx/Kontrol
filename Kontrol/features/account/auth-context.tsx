@@ -51,6 +51,7 @@ type AuthContextValue = {
   loadSession(): Promise<void>;
   clearSession(): Promise<void>;
   refreshSession(): Promise<string | null>;
+  refreshUser(): Promise<ApiUser | null>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -135,6 +136,24 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return null;
     }
   }, [clearSessionState]);
+
+  const refreshUser = useCallback(async () => {
+    if (!sessionRef.current && !accessToken) {
+      return null;
+    }
+
+    const apiUser = await getMeWithApi();
+    const currentSession = sessionRef.current;
+
+    if (currentSession) {
+      sessionRef.current = { ...currentSession, user: apiUser };
+      setUser(toAuthenticatedUser(apiUser, currentSession.createdAt));
+    } else {
+      setUser((currentUser) => currentUser ? toAuthenticatedUser(apiUser, currentUser.createdAt) : null);
+    }
+
+    return apiUser;
+  }, [accessToken]);
 
   useEffect(() => {
     setApiRefreshHandler(refreshSession);
@@ -254,8 +273,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       loadSession: restoreSession,
       clearSession: clearSessionState,
       refreshSession,
+      refreshUser,
     }),
-    [accessToken, clearSessionState, isLoadingSession, login, logout, refreshSession, refreshToken, register, restoreSession, user],
+    [accessToken, clearSessionState, isLoadingSession, login, logout, refreshSession, refreshToken, refreshUser, register, restoreSession, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

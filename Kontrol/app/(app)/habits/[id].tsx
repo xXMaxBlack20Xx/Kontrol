@@ -96,16 +96,10 @@ export default function HabitDetailScreen() {
     setIsSuccess(false);
 
     try {
-      const result = await completeHabitForToday(habit, remoteCompletionRepository);
+      await completeHabitForToday(habit, remoteCompletionRepository);
       const completions = await remoteCompletionRepository.listByHabit(habit.id);
 
       setHabitDetail(buildHabitDetailSummary(habit, completions));
-      setIsSuccess(true);
-      setMessage(
-        result.didCreate
-          ? `Cumplimiento registrado. Racha actual: ${result.currentStreak} día(s).`
-          : 'Este hábito ya estaba completado hoy.',
-      );
     } catch (error) {
       setIsSuccess(false);
 

@@ -21,7 +21,7 @@ export async function getHabits(req: HttpRequest, context: InvocationContext): P
   try {
     const habits = await queryItems<HabitDocument>(
       habitsContainer(),
-      "SELECT * FROM c WHERE c.userId = @userId AND c.isDeleted = false ORDER BY c.updatedAt DESC",
+      "SELECT * FROM c WHERE c.userId = @userId AND (NOT IS_DEFINED(c.isDeleted) OR c.isDeleted != true) ORDER BY c.updatedAt DESC",
       [{ name: "@userId", value: userId }],
       userId,
     );

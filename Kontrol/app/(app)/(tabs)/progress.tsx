@@ -1,7 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ComponentProps } from 'react';
-import { ActivityIndicator, Image, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { SessionLoadingScreen } from '@/components/session-loading-screen';
 import { AppHeader } from '@/components/ui/app-header';
@@ -30,6 +30,14 @@ export default function ProgressScreen() {
     user,
   } = useProgressScreenController();
 
+  const showInfoAlert = () => {
+    Alert.alert(
+      'Acerca de tu Progreso',
+      'Tus rachas y avances se calculan con hábitos y cumplimientos reales de Kontrol.',
+      [{ text: 'Entendido', style: 'default' }]
+    );
+  };
+
   if (!user) {
     return <SessionLoadingScreen />;
   }
@@ -57,10 +65,20 @@ export default function ProgressScreen() {
           />
         }
       >
-        <AppHeader
-          description="Tus rachas y avances se calculan con hábitos y cumplimientos reales de Kontrol."
-          title="Progreso"
-        />
+        <View style={styles.heroBlock}>
+          <View style={styles.headerRow}>
+            <View style={{ flex: 1 }}>
+              <AppHeader title="Progreso" />
+            </View>
+            <Pressable
+              onPress={showInfoAlert}
+              style={({ pressed }) => [styles.infoButton, pressed && styles.pressed]}
+              hitSlop={12}
+            >
+              <MaterialIcons name="info-outline" size={24} color={colors.textSecondary} />
+            </Pressable>
+          </View>
+        </View>
 
         {isInitialLoading ? <ProgressSkeleton /> : null}
 
@@ -72,8 +90,8 @@ export default function ProgressScreen() {
           <>
             {!progress.hasHabits ? (
               <EmptyState
-                action={<PrimaryButton icon="add-circle-outline" onPress={navigateToCreateHabit} title="Crear primer hábito" />}
-                description="Todavía no tienes hábitos para medir. Crea uno para empezar a registrar tu constancia."
+                action={<SecondaryButton compact fullWidth={false} icon="add-circle-outline" onPress={navigateToCreateHabit} title="Crear primero" />}
+                description="Crea uno para empezar a registrar tu constancia."
                 icon="track-changes"
                 title="Todavía no tienes hábitos"
               />
@@ -337,7 +355,7 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     paddingBottom: 140,
   },
   streakCard: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surface,
     borderRadius: 24,
     borderWidth: 0,
     gap: spacing.md,
@@ -413,7 +431,7 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   metricCard: {
     flexBasis: '47%',
     flexGrow: 1,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surface,
     borderRadius: 22,
     borderWidth: 0,
     gap: spacing.xs,
@@ -462,7 +480,7 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontWeight: typography.weights.semibold,
   },
   sectionCard: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surface,
     borderRadius: 24,
     borderWidth: 0,
     gap: spacing.xl,
@@ -636,7 +654,7 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   },
   skeletonHero: {
     alignItems: 'center',
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surface,
     borderRadius: 24,
     borderWidth: 0,
     gap: spacing.md,
@@ -646,7 +664,7 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   skeletonMetric: {
     flexBasis: '47%',
     flexGrow: 1,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surface,
     borderRadius: 22,
     borderWidth: 0,
     minHeight: 110,
@@ -657,5 +675,22 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontFamily: typography.fontFamily,
     fontSize: 15,
     fontWeight: typography.weights.semibold,
+  },
+  heroBlock: {
+    gap: spacing.lg,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  infoButton: {
+    padding: spacing.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pressed: {
+    opacity: 0.72,
   },
 });

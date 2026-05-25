@@ -1,9 +1,9 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ComponentProps, ReactNode } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/ui/card';
-import { radius, spacing, typography } from '@/components/ui/theme';
+import { radius, shadows, spacing, typography } from '@/components/ui/theme';
 import { useTheme } from '@/components/ui/theme-context';
 import { formatHabitDays } from '@/features/habits/habit';
 
@@ -55,14 +55,15 @@ export function HabitCard({
   const { colors } = useTheme();
   const accentColor = isHexColor(color) ? color : completedToday ? '#34C759' : colors.primary;
   const iconName = isMaterialIconName(icon) ? icon : completedToday ? 'check' : 'track-changes';
-  const resolvedStatusLabel = statusLabel ?? (completedToday ? 'Completado' : 'Pendiente');
   const isSuccessStatus = completedToday || statusTone === 'success';
 
   return (
     <Card
       style={[
         styles.card,
-        { borderColor: completedToday ? accentColor : colors.border },
+        {
+          backgroundColor: colors.surface,
+        },
       ]}>
       {coverPhotoUrl ? <Image source={{ uri: coverPhotoUrl }} style={styles.coverImage} /> : null}
 
@@ -72,77 +73,98 @@ export function HabitCard({
         </View>
 
         <View style={styles.titleBlock}>
-          <Text numberOfLines={2} style={[styles.name, { color: colors.textPrimary }]}>{name}</Text>
+          <Text numberOfLines={2} style={[styles.name, { color: colors.textPrimary }]}>
+            {name}
+          </Text>
           <View style={styles.metaInline}>
-            <Text style={[styles.detail, { color: colors.textSecondary }]}>{formatHabitDays(daysOfWeek)}</Text>
-            {category ? <Text style={[styles.dot, { color: colors.textTertiary }]}>•</Text> : null}
-            {category ? <Text style={[styles.detail, { color: colors.textSecondary }]}>{category}</Text> : null}
+            <Text style={[styles.detail, { color: colors.textSecondary }]}>
+              {formatHabitDays(daysOfWeek)}
+              {category ? `  •  ${category}` : ''}
+              {streak > 0 ? `  •  🔥 ${streak} ${streak === 1 ? 'día' : 'días'}` : ''}
+            </Text>
           </View>
         </View>
 
         <View
-            style={[
-              styles.statusPill,
-              { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+          style={[
+            styles.statusPill,
+            { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
             isSuccessStatus && { backgroundColor: `${accentColor}1F`, borderColor: accentColor },
           ]}>
           <MaterialIcons
             color={isSuccessStatus ? accentColor : colors.textSecondary}
-            name={completedToday ? 'check-circle' : statusTone === 'muted' ? 'event-busy' : 'radio-button-unchecked'}
-            size={17}
+            name={completedToday ? 'check' : statusTone === 'muted' ? 'event-busy' : 'add'}
+            size={22}
           />
-          <Text
-            style={[
-              styles.statusText,
-              { color: colors.textSecondary },
-              isSuccessStatus && { color: accentColor },
-            ]}>
-            {resolvedStatusLabel}
-          </Text>
         </View>
       </View>
 
       {scheduleDescription ? (
-        <Text style={[styles.scheduleDescription, { color: colors.textSecondary }]}>{scheduleDescription}</Text>
+        <Text style={[styles.scheduleDescription, { color: colors.textSecondary }]}>
+          {scheduleDescription}
+        </Text>
       ) : null}
 
-      <View style={styles.metaGrid}>
-        <View style={[styles.metricTile, { backgroundColor: colors.surfaceMuted }]}>
-          <Text style={[styles.metricValue, { color: colors.textPrimary }]}>{streak}</Text>
-          <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>racha</Text>
-        </View>
-        {target ? (
-          <View style={[styles.metaPill, { backgroundColor: colors.surfaceMuted }]}>
-            <MaterialIcons color={colors.textSecondary} name="flag" size={16} />
-            <Text numberOfLines={1} style={[styles.detail, { color: colors.textSecondary }]}>{target}</Text>
-          </View>
-        ) : null}
-        {reminderTime ? (
-          <View style={[styles.metaPill, { backgroundColor: colors.surfaceMuted }]}>
-            <MaterialIcons color={colors.textSecondary} name="notifications-none" size={16} />
-            <Text style={[styles.detail, { color: colors.textSecondary }]}>Recordatorio {reminderTime}</Text>
-          </View>
-        ) : null}
-        {subcategories?.slice(0, 3).map((subcategory) => (
-          <View key={subcategory} style={[styles.metaPill, { backgroundColor: colors.surfaceMuted }]}>
-            <Text numberOfLines={1} style={[styles.detail, { color: colors.textSecondary }]}>{subcategory}</Text>
-          </View>
-        ))}
-        {subcategories && subcategories.length > 3 ? (
-          <View style={[styles.metaPill, { backgroundColor: colors.surfaceMuted }]}>
-            <Text style={[styles.detail, { color: colors.textSecondary }]}>+{subcategories.length - 3}</Text>
-          </View>
-        ) : null}
-      </View>
+      {target || reminderTime || (subcategories && subcategories.length > 0) ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.metaGrid}
+          contentContainerStyle={styles.metaGridContent}>
+          {target ? (
+            <View style={[styles.metaPill, { backgroundColor: `${accentColor}1A` }]}>
+              <MaterialIcons color={accentColor} name="flag" size={14} />
+              <Text numberOfLines={1} style={[styles.metaPillText, { color: accentColor }]}>
+                {target}
+              </Text>
+            </View>
+          ) : null}
+          {reminderTime ? (
+            <View style={[styles.metaPill, { backgroundColor: `${accentColor}1A` }]}>
+              <MaterialIcons color={accentColor} name="notifications-none" size={14} />
+              <Text style={[styles.metaPillText, { color: accentColor }]}>
+                Recordatorio {reminderTime}
+              </Text>
+            </View>
+          ) : null}
+          {subcategories?.slice(0, 3).map((subcategory) => (
+            <View key={subcategory} style={[styles.metaPill, { backgroundColor: `${accentColor}1A` }]}>
+              <Text numberOfLines={1} style={[styles.metaPillText, { color: accentColor }]}>
+                {subcategory}
+              </Text>
+            </View>
+          ))}
+          {subcategories && subcategories.length > 3 ? (
+            <View style={[styles.metaPill, { backgroundColor: `${accentColor}1A` }]}>
+              <Text style={[styles.metaPillText, { color: accentColor }]}>
+                +{subcategories.length - 3}
+              </Text>
+            </View>
+          ) : null}
+        </ScrollView>
+      ) : null}
 
-      {actions ? <View style={styles.actions}>{actions}</View> : null}
+      {actions ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.actions}
+          contentContainerStyle={styles.actionsContent}>
+          {actions}
+        </ScrollView>
+      ) : null}
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    gap: spacing.md,
+    borderRadius: 24,
+    borderWidth: 0,
+    padding: spacing.lg,
+    gap: spacing.lg,
+    ...shadows.soft,
+    elevation: 4,
   },
   coverImage: {
     alignSelf: 'stretch',
@@ -150,10 +172,9 @@ const styles = StyleSheet.create({
     height: 150,
   },
   header: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
     flexDirection: 'row',
-    gap: spacing.md,
-    justifyContent: 'space-between',
+    gap: 14,
   },
   iconFrame: {
     alignItems: 'center',
@@ -164,13 +185,13 @@ const styles = StyleSheet.create({
   },
   titleBlock: {
     flex: 1,
-    gap: spacing.xs,
+    gap: 4,
   },
   name: {
     fontFamily: typography.fontFamily,
-    fontSize: 20,
-    fontWeight: typography.weights.heavy,
-    lineHeight: 25,
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 22,
     letterSpacing: -0.5,
   },
   metaInline: {
@@ -179,72 +200,55 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
   },
-  dot: {
-    fontFamily: typography.fontFamily,
-    fontSize: 14,
-  },
   detail: {
     fontFamily: typography.fontFamily,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
   statusPill: {
     alignItems: 'center',
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 5,
-    minHeight: 32,
-    paddingHorizontal: 10,
-  },
-  statusText: {
-    fontFamily: typography.fontFamily,
-    fontSize: 12,
-    fontWeight: typography.weights.semibold,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    height: 44,
+    width: 44,
+    justifyContent: 'center',
   },
   scheduleDescription: {
     fontFamily: typography.fontFamily,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
   metaGrid: {
-    alignItems: 'center',
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
   },
-  metricTile: {
-    alignItems: 'center',
-    borderRadius: radius.lg,
-    minWidth: 72,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  metricValue: {
-    fontFamily: typography.fontFamilyRound,
-    fontSize: 22,
-    fontWeight: typography.weights.heavy,
-    lineHeight: 25,
-  },
-  metricLabel: {
-    fontFamily: typography.fontFamily,
-    fontSize: 12,
-    fontWeight: typography.weights.semibold,
+  metaGridContent: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingRight: 12,
   },
   metaPill: {
     alignItems: 'center',
-    borderRadius: radius.pill,
+    borderRadius: 999,
     flexDirection: 'row',
-    gap: 6,
+    gap: 4,
     maxWidth: '100%',
-    minHeight: 36,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  metaPillText: {
+    fontFamily: typography.fontFamily,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+    lineHeight: 16,
   },
   actions: {
-    alignItems: 'center',
     flexDirection: 'row',
-    flexWrap: 'wrap',
+  },
+  actionsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
-    paddingTop: spacing.xs,
+    paddingRight: 16,
   },
 });

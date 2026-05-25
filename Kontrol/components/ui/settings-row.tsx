@@ -18,6 +18,7 @@ type SettingsRowProps = {
   detailColor?: string;
   iconBgColor?: string;
   chevronColor?: string;
+  showChevron?: boolean;
 };
 
 export function SettingsRow({
@@ -31,10 +32,13 @@ export function SettingsRow({
   detailColor,
   iconBgColor,
   chevronColor,
+  showChevron = true,
 }: SettingsRowProps) {
   const { colors } = useTheme();
 
   const contentColor = tone === 'danger' ? colors.dangerText : (textColor ?? colors.textPrimary);
+  const hasChevron = onPress && showChevron;
+
   const rowContent = (
     <>
       <View style={[styles.iconFrame, { backgroundColor: colors.surfaceMuted }, iconBgColor ? { backgroundColor: iconBgColor } : null]}>
@@ -55,7 +59,7 @@ export function SettingsRow({
           </Text>
         ) : null}
       </View>
-      {onPress ? <MaterialIcons color={chevronColor ?? colors.textTertiary} name="chevron-right" size={22} /> : null}
+      {hasChevron ? <MaterialIcons color={chevronColor ?? colors.textTertiary} name="chevron-right" size={22} /> : null}
     </>
   );
 
@@ -81,6 +85,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
     minHeight: 58,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   pressed: {
     opacity: 0.72,

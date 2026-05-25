@@ -8,6 +8,7 @@ type ApiHabit = {
   userId: string;
   name: string;
   category: string | null;
+  subcategory?: string | null;
   subcategories?: string[];
   frequency: string;
   daysOfWeek?: number[];
@@ -49,7 +50,7 @@ async function toHabitRecord(habit: ApiHabit): Promise<HabitRecord> {
     name: habit.name,
     frequency: habit.frequency === 'custom' ? 'custom' : 'daily',
     category: habit.category ?? undefined,
-    subcategories: habit.subcategories?.filter(Boolean),
+    subcategories: habit.subcategories?.filter(Boolean) ?? (habit.subcategory ? [habit.subcategory] : undefined),
     daysOfWeek: habit.daysOfWeek,
     color: habit.color ?? undefined,
     icon: habit.icon ?? undefined,

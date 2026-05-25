@@ -21,12 +21,22 @@ export async function createPhotoUploadUrl(req: HttpRequest, context: Invocation
     const parsed = createPhotoUploadUrlSchema.safeParse(await req.json());
     if (!parsed.success) return badRequest("Invalid request body", parsed.error.flatten());
 
-    const habit = await readItem<HabitDocument>(habitsContainer(), parsed.data.habitId, userId);
-    if (!habit || habit.isDeleted) return notFound("Habit not found");
-
     const photoId = `photo_${uuidv4()}`;
     const extension = parsed.data.fileExtension === "jpeg" ? "jpg" : parsed.data.fileExtension;
-    const blobPath = `${userId}/habits/${parsed.data.habitId}/${photoId}.${extension}`;
+
+    let blobPath: string;
+    if (parsed.data.purpose === "profile") {
+      blobPath = `${userId}/profile/${photoId}.${extension}`;
+    } else {
+      const habitId = parsed.data.habitId;
+      if (!habitId) return badRequest("habitId is required for habit cover photos");
+
+      const habit = await readItem<HabitDocument>(habitsContainer(), habitId, userId);
+      if (!habit || habit.isDeleted) return notFound("Habit not found");
+
+      blobPath = `${userId}/habits/${habitId}/${photoId}.${extension}`;
+    }
+
     const upload = await generatePhotoUploadUrl(blobPath);
 
     return created({ photoId, blobPath, ...upload });

@@ -33,10 +33,13 @@ export type HabitDocument = {
   userId: string;
   name: string;
   category: string | null;
+  subcategories?: string[];
   frequency: string;
+  daysOfWeek?: number[];
   goal: string | null;
   color: string | null;
   icon: string | null;
+  coverPhotoId?: string | null;
   isArchived: boolean;
   isDeleted: boolean;
   syncVersion: number;
@@ -72,7 +75,8 @@ export type ReminderDocument = {
 export type PhotoDocument = {
   id: string;
   userId: string;
-  habitId: string;
+  habitId?: string | null;
+  purpose?: "habit-cover" | "profile";
   blobPath: string;
   contentType: "image/jpeg" | "image/png" | "image/webp";
   sizeBytes: number;
@@ -106,5 +110,5 @@ export const toPublicUser = (user: UserDocument): PublicUser => ({
   userId: user.userId,
   email: user.email,
   displayName: user.displayName,
-  profilePhotoId: user.profilePhotoId,
+  profilePhotoId: user.profilePhotoId ?? null,
 });

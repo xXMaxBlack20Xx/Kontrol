@@ -1,9 +1,24 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import { AuthenticationError, requireUser } from "../lib/auth";
 import { habitCompletionsContainer, habitsContainer, readItem } from "../lib/cosmos";
-import { badRequest, created, isOptions, noContent, notFound, ok, serverError, unauthorized } from "../lib/http";
+import { badRequest, corsHeaders, created, isOptions, noContent, notFound, ok, serverError, unauthorized } from "../lib/http";
+import { isHabitScheduledForDate } from "../lib/habitSchedule";
 import type { HabitCompletionDocument, HabitDocument } from "../lib/models";
 import { createCompletionSchema } from "../lib/schemas";
+
+function habitNotScheduledToday(req: HttpRequest): HttpResponseInit {
+  return {
+    status: 400,
+    jsonBody: {
+      error: "HABIT_NOT_SCHEDULED_TODAY",
+      message: "This habit is not scheduled for today.",
+    },
+    headers: {
+      "Content-Type": "application/json",
+      ...corsHeaders(req),
+    },
+  };
+}
 
 export async function createCompletion(req: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   if (isOptions(req)) return noContent(req);
@@ -30,6 +45,10 @@ export async function createCompletion(req: HttpRequest, context: InvocationCont
 
     if (!habit || habit.isDeleted) {
       return notFound("Habit not found");
+    }
+
+    if (!isHabitScheduledForDate(habit, parsed.data.date)) {
+      return habitNotScheduledToday(req);
     }
 
     const now = new Date().toISOString();

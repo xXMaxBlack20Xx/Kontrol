@@ -2,6 +2,7 @@ import { type Href, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, InteractionManager, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { HabitCard } from '@/components/habit-card';
 import { SessionLoadingScreen } from '@/components/session-loading-screen';
@@ -39,17 +40,21 @@ import { deleteHabitReminder, type ReminderRecord } from '@/features/reminders/r
 import { deleteRemoteReminderByHabitId } from '@/features/reminders/remote-reminder-service';
 import { Confetti } from '@/components/ui/confetti';
 import {
+  calculateCurrentStreak,
   calculateTodaySummary,
+  calculateWeeklySeries,
   getActiveHabits,
   getNextScheduledDayLabel,
   isHabitScheduledForDate,
   isHabitScheduledToday,
+  type WeeklyProgressPoint,
 } from '@/features/habits/progress-helpers';
 
 export default function HabitsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { colors, isDark } = useTheme();
+  const styles = getStyles(colors, isDark);
 
   const showInfoAlert = () => {
     Alert.alert(
@@ -191,13 +196,6 @@ export default function HabitsScreen() {
 
         return nextCompletionByHabit;
       });
-
-      setIsSuccess(true);
-      setMessage(
-        result.didCreate
-          ? `Cumplimiento registrado. Racha actual: ${result.currentStreak} día(s).`
-          : 'Este hábito ya estaba completado hoy.',
-      );
     } catch (error) {
       setIsSuccess(false);
 
@@ -329,6 +327,8 @@ export default function HabitsScreen() {
   const activeGradient = isDark ? gradients.blueScreenDark : gradients.blueScreenLight;
   const visibleHabits = getActiveHabits(habits);
   const todaySummary = calculateTodaySummary(visibleHabits, completions);
+  const currentStreak = calculateCurrentStreak(visibleHabits, completions);
+  const weeklySeries = calculateWeeklySeries(visibleHabits, completions);
   const isInitialLoading = isLoading && visibleHabits.length === 0;
 
   return (
@@ -373,6 +373,8 @@ export default function HabitsScreen() {
         pendingTodayCount={todaySummary.pendingTodayCount}
         totalCompletions={todaySummary.totalCompletions}
         todayHabitCount={todaySummary.todayHabitCount}
+        currentStreak={currentStreak}
+        weeklySeries={weeklySeries}
       />
 
       {message ? <FeedbackMessage message={message} type={isSuccess ? 'success' : 'error'} /> : null}
@@ -512,61 +514,94 @@ type TodayProgressCardProps = {
   pendingTodayCount: number;
   totalCompletions: number;
   todayHabitCount: number;
+  currentStreak: number;
+  weeklySeries: WeeklyProgressPoint[];
 };
 
 function TodayProgressCard({
-  activeHabitCount,
-  completedTodayCount,
-  completionRate,
-  pendingTodayCount,
-  totalCompletions,
-  todayHabitCount,
+  currentStreak,
+  weeklySeries,
 }: TodayProgressCardProps) {
-  const { colors } = useTheme();
-  const safeCompletionRate = Math.max(0, Math.min(100, completionRate));
-  const progressWidth = `${safeCompletionRate}%` as `${number}%`;
+  const { colors, isDark } = useTheme();
+  const styles = getStyles(colors, isDark);
+
+  // Dynamic encouragement copy based on streak level
+  let encouragementText = '¡Un paso a la vez!';
+  if (currentStreak > 21) {
+    encouragementText = 'Disciplina Nivel: Maestro';
+  } else if (currentStreak > 7) {
+    encouragementText = '🔥 ¡No pares ahora!';
+  } else if (currentStreak > 0) {
+    encouragementText = '¡Buen comienzo, sigue así!';
+  }
+
+  // Enforce 7 weekly points representation
+  const days = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+  const points = weeklySeries.length === 7 ? weeklySeries : days.map((day, idx) => ({
+    dayLabel: day,
+    rate: 0,
+    isToday: false,
+    isFuture: false,
+    completed: 0,
+    expected: 0,
+    date: String(idx),
+  }));
 
   return (
-    <Card style={styles.progressCard}>
-      <View style={styles.progressHeader}>
-        <View>
-          <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>Resumen de hoy</Text>
-          <Text style={[styles.progressTitle, { color: colors.textPrimary }]}>{safeCompletionRate}% completado</Text>
-        </View>
-        <View style={[styles.progressBadge, { backgroundColor: colors.surfaceMuted }]}>
-          <Text style={[styles.progressBadgeText, { color: colors.textPrimary }]}>
-            {completedTodayCount}/{todayHabitCount}
-          </Text>
+    <Card style={styles.rachaWidget}>
+      <View style={styles.rachaTopRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.rachaEyebrow}>DÍAS SIGUIENDO EL RITMO</Text>
+          <View style={styles.rachaNumberRow}>
+            <Text style={styles.rachaNumber}>{currentStreak}</Text>
+            <Ionicons name="flame" size={38} color={isDark ? '#0A84FF' : '#007AFF'} style={styles.flachaIcon} />
+          </View>
         </View>
       </View>
 
-      <View style={[styles.progressTrack, { backgroundColor: colors.surfaceMuted }]}>
-        <View style={[styles.progressFill, { backgroundColor: colors.primary, width: progressWidth }]} />
+      <View style={styles.timelineContainer}>
+        <Text style={styles.timelineLabel}>CRONOGRAMA DE RITMO SEMANAL</Text>
+        <View style={styles.timelineBubbles}>
+          {points.map((point, index) => {
+            const isCompleted = point.expected > 0 && point.completed >= point.expected;
+            return (
+              <View key={point.date || index} style={styles.bubbleWrapper}>
+                <View
+                  style={[
+                    styles.timelineBubble,
+                    isCompleted
+                      ? { backgroundColor: isDark ? '#0A84FF' : '#007AFF' }
+                      : { backgroundColor: colors.surfaceMuted },
+                    point.isToday && styles.timelineBubbleToday,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.timelineBubbleText,
+                      isCompleted
+                        ? { color: colors.primaryText }
+                        : { color: colors.textSecondary },
+                    ]}
+                  >
+                    {point.dayLabel.charAt(0)}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
       </View>
 
-      <View style={styles.progressStats}>
-        <ProgressStat label="Activos" value={activeHabitCount} />
-        <ProgressStat label="Hoy" value={todayHabitCount} />
-        <ProgressStat label="Pendientes" value={pendingTodayCount} />
-        <ProgressStat label="Registros" value={totalCompletions} />
+      <View style={styles.rachaFooter}>
+        <Text style={styles.encouragementText}>{encouragementText}</Text>
       </View>
     </Card>
   );
 }
 
-function ProgressStat({ label, value }: { label: string; value: number }) {
-  const { colors } = useTheme();
-
-  return (
-    <View style={styles.progressStat}>
-      <Text style={[styles.progressStatValue, { color: colors.textPrimary }]}>{value}</Text>
-      <Text style={[styles.progressStatLabel, { color: colors.textSecondary }]}>{label}</Text>
-    </View>
-  );
-}
-
 function HabitListSkeleton() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const styles = getStyles(colors, isDark);
 
   return (
     <Card style={styles.skeletonCard}>
@@ -580,7 +615,7 @@ function HabitListSkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   gradientRoot: {
     flex: 1,
   },
@@ -604,62 +639,94 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.72,
   },
-  progressCard: {
-    gap: spacing.md,
+  rachaWidget: {
+    borderRadius: 36,
+    borderWidth: 0,
+    padding: spacing.xxl,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: isDark ? 0.28 : 0.04,
+    shadowRadius: 32,
+    elevation: 4,
+    gap: spacing.xl,
   },
-  progressHeader: {
+  rachaTopRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
   },
-  progressLabel: {
+  rachaEyebrow: {
+    color: colors.textSecondary,
     fontFamily: typography.fontFamily,
-    fontSize: 14,
-    fontWeight: typography.weights.semibold,
-  },
-  progressTitle: {
-    fontFamily: typography.fontFamily,
-    fontSize: 25,
+    fontSize: 12,
     fontWeight: typography.weights.heavy,
-    letterSpacing: -0.7,
-    marginLeft: -2,
+    letterSpacing: -0.2,
+    textTransform: 'uppercase',
   },
-  progressBadge: {
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+  rachaNumberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
-  progressBadgeText: {
+  rachaNumber: {
+    color: colors.textPrimary,
     fontFamily: typography.fontFamilyRound,
-    fontSize: 16,
-    fontWeight: typography.weights.heavy,
+    fontSize: 58,
+    fontWeight: '900',
+    letterSpacing: -1.4,
   },
-  progressTrack: {
-    borderRadius: radius.pill,
-    height: 9,
-    overflow: 'hidden',
+  flachaIcon: {
+    marginLeft: spacing.xs,
   },
-  progressFill: {
-    borderRadius: radius.pill,
-    height: '100%',
-  },
-  progressStats: {
-    flexDirection: 'row',
+  timelineContainer: {
     gap: spacing.sm,
   },
-  progressStat: {
-    flex: 1,
-    gap: 2,
-  },
-  progressStatValue: {
-    fontFamily: typography.fontFamilyRound,
-    fontSize: 22,
+  timelineLabel: {
+    color: colors.textTertiary,
+    fontFamily: typography.fontFamily,
+    fontSize: 10,
     fontWeight: typography.weights.heavy,
+    letterSpacing: -0.2,
+    textTransform: 'uppercase',
   },
-  progressStatLabel: {
+  timelineBubbles: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  bubbleWrapper: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  timelineBubble: {
+    height: 34,
+    width: 34,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  timelineBubbleToday: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  timelineBubbleText: {
     fontFamily: typography.fontFamily,
     fontSize: 13,
-    fontWeight: typography.weights.semibold,
+    fontWeight: typography.weights.heavy,
+  },
+  rachaFooter: {
+    borderTopWidth: 1,
+    borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+    paddingTop: spacing.md,
+    alignItems: 'center',
+  },
+  encouragementText: {
+    color: colors.textSecondary,
+    fontFamily: typography.fontFamily,
+    fontSize: 14,
+    fontStyle: 'italic',
+    fontWeight: '600',
   },
   sectionHeader: {
     alignItems: 'flex-end',

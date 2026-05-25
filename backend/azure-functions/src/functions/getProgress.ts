@@ -1,6 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import { AuthenticationError, requireUser } from "../lib/auth";
 import { habitCompletionsContainer, habitsContainer, queryItems } from "../lib/cosmos";
+import { isHabitScheduledForDate } from "../lib/habitSchedule";
 import { badRequest, isOptions, noContent, ok, serverError, unauthorized } from "../lib/http";
 import type { HabitCompletionDocument, HabitDocument } from "../lib/models";
 import { progressQuerySchema } from "../lib/schemas";
@@ -28,7 +29,7 @@ export async function getProgress(req: HttpRequest, context: InvocationContext):
 
     const habits = await queryItems<HabitDocument>(
       habitsContainer(),
-      "SELECT * FROM c WHERE c.userId = @userId AND c.isDeleted = false",
+      "SELECT * FROM c WHERE c.userId = @userId AND (NOT IS_DEFINED(c.isDeleted) OR c.isDeleted != true)",
       [{ name: "@userId", value: userId }],
       userId,
     );
@@ -54,18 +55,26 @@ export async function getProgress(req: HttpRequest, context: InvocationContext):
     );
 
     const today = new Date().toISOString().slice(0, 10);
-    const activeHabits = habits.filter((habit) => !habit.isArchived).length;
+    const activeHabits = habits.filter((habit) => habit.isArchived !== true);
+    const activeHabitIds = new Set(activeHabits.map((habit) => habit.id));
+    const scheduledTodayHabitIds = new Set(
+      activeHabits.filter((habit) => isHabitScheduledForDate(habit, today)).map((habit) => habit.id),
+    );
+    const activeCompletions = completions.filter((completion) => activeHabitIds.has(completion.habitId));
+    const totalCompletionKeys = new Set(activeCompletions.map((completion) => `${completion.habitId}:${completion.date}`));
     const completedToday = new Set(
-      completions.filter((completion) => completion.date === today).map((completion) => completion.habitId),
+      activeCompletions
+        .filter((completion) => completion.date === today && scheduledTodayHabitIds.has(completion.habitId))
+        .map((completion) => completion.habitId),
     ).size;
 
     return ok({
       progress: {
-        totalHabits: habits.length,
-        activeHabits,
-        totalCompletions: completions.length,
+        totalHabits: activeHabits.length,
+        activeHabits: activeHabits.length,
+        totalCompletions: totalCompletionKeys.size,
         completedToday,
-        completionRate: activeHabits === 0 ? 0 : Math.min(completedToday / activeHabits, 1),
+        completionRate: scheduledTodayHabitIds.size === 0 ? 0 : Math.min(completedToday / scheduledTodayHabitIds.size, 1),
       },
     });
   } catch (error) {

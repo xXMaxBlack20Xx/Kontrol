@@ -2,7 +2,7 @@ import DateTimePicker, { type DateTimePickerEvent } from '@react-native-communit
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as ImagePicker from 'expo-image-picker';
 import { type Href, useRouter } from 'expo-router';
-import { ComponentProps, ReactNode, useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,11 +17,26 @@ import { gradients, radius, spacing, typography } from '@/components/ui/theme';
 import { useTheme } from '@/components/ui/theme-context';
 import { useAuth } from '@/features/account/auth-context';
 import {
-  createPhotoMetadata,
-  createPhotoUploadUrl,
-  uploadPhotoBlob,
-  type PhotoMetadata,
-} from '@/features/api/photo-service';
+  allDays,
+  categoryOptions,
+  colorOptions,
+  dateFromTime,
+  dayOptions,
+  formatTime,
+  getFrequencyFromDays,
+  iconOptions,
+  sortDays,
+  subcategoryOptions,
+  weekdayDays,
+  weekendDays,
+  type HabitIconName,
+} from '@/features/habits/habit-form-options';
+import {
+  getHabitImageType,
+  maxHabitImageSizeBytes,
+  uploadHabitImage,
+  type SelectedHabitImage,
+} from '@/features/habits/habit-image';
 import {
   createHabit,
   CreateHabitError,
@@ -41,24 +56,14 @@ import {
 } from '@/features/reminders/reminder';
 import { syncRemoteReminder } from '@/features/reminders/remote-reminder-service';
 
-type IconName = ComponentProps<typeof MaterialIcons>['name'];
 type SubmitState = 'idle' | 'creating' | 'savingReminder' | 'uploadingImage' | 'attachingImage';
-type ImageContentType = PhotoMetadata['contentType'];
-type ImageExtension = 'jpg' | 'jpeg' | 'png' | 'webp';
-
-type SelectedHabitImage = {
-  contentType: ImageContentType;
-  fileExtension: ImageExtension;
-  sizeBytes?: number;
-  uri: string;
-};
 
 type CreateHabitFormValues = {
   category: string;
   color: string;
   daysOfWeek: number[];
   frequency: string;
-  icon: IconName;
+  icon: HabitIconName;
   name: string;
   reminderTime: string;
   subcategories: string[];
@@ -66,101 +71,6 @@ type CreateHabitFormValues = {
 };
 
 type CreateHabitFormErrors = Partial<Record<keyof CreateHabitFormValues, string>>;
-
-const allDays = [1, 2, 3, 4, 5, 6, 0];
-const weekdayDays = [1, 2, 3, 4, 5];
-const weekendDays = [6, 0];
-const maxImageSizeBytes = 10_000_000;
-
-const dayOptions = [
-  { label: 'L', value: 1 },
-  { label: 'M', value: 2 },
-  { label: 'M', value: 3 },
-  { label: 'J', value: 4 },
-  { label: 'V', value: 5 },
-  { label: 'S', value: 6 },
-  { label: 'D', value: 0 },
-];
-const categoryOptions = ['Salud', 'Ejercicio', 'Estudio', 'Productividad', 'Alimentación', 'Sueño', 'Personal'];
-const subcategoryOptions = [
-  'Cardio',
-  'Fuerza',
-  'Movilidad',
-  'Mentalidad',
-  'Lectura',
-  'Hidratación',
-  'Descanso',
-  'Nutrición',
-  'Enfoque',
-  'Productividad',
-  'Recuperación',
-  'Técnica',
-];
-const colorOptions = [
-  '#007AFF',
-  '#34C759',
-  '#FF9500',
-  '#AF52DE',
-  '#FF2D55',
-  '#5AC8FA',
-  '#30D5C8',
-  '#2F4F9F',
-  '#D96C8A',
-  '#C47A1B',
-];
-const iconOptions: { label: string; value: IconName }[] = [
-  { label: 'Meta', value: 'flag' },
-  { label: 'Salud', value: 'favorite' },
-  { label: 'Ejercicio', value: 'fitness-center' },
-  { label: 'Estudio', value: 'menu-book' },
-  { label: 'Sueño', value: 'bedtime' },
-  { label: 'Agua', value: 'water-drop' },
-  { label: 'Mejorar', value: 'trending-up' },
-  { label: 'Dieta', value: 'restaurant' },
-];
-
-function getFrequencyFromDays(daysOfWeek: number[]): 'daily' | 'custom' {
-  return daysOfWeek.length === 7 ? 'daily' : 'custom';
-}
-
-function sortDays(daysOfWeek: number[]): number[] {
-  return dayOptions.map((dayOption) => dayOption.value).filter((day) => daysOfWeek.includes(day));
-}
-
-function dateFromTime(time: string): Date {
-  const date = new Date();
-  const [hour = 8, minute = 0] = time.split(':').map(Number);
-
-  date.setHours(hour, minute, 0, 0);
-
-  return date;
-}
-
-function formatTime(date: Date): string {
-  const hour = `${date.getHours()}`.padStart(2, '0');
-  const minute = `${date.getMinutes()}`.padStart(2, '0');
-
-  return `${hour}:${minute}`;
-}
-
-function getImageType(asset: ImagePicker.ImagePickerAsset): { contentType: ImageContentType; fileExtension: ImageExtension } | null {
-  const mimeType = asset.mimeType?.toLowerCase();
-  const uri = asset.uri.toLowerCase();
-
-  if (mimeType === 'image/jpeg' || uri.endsWith('.jpg') || uri.endsWith('.jpeg')) {
-    return { contentType: 'image/jpeg', fileExtension: uri.endsWith('.jpeg') ? 'jpeg' : 'jpg' };
-  }
-
-  if (mimeType === 'image/png' || uri.endsWith('.png')) {
-    return { contentType: 'image/png', fileExtension: 'png' };
-  }
-
-  if (mimeType === 'image/webp' || uri.endsWith('.webp')) {
-    return { contentType: 'image/webp', fileExtension: 'webp' };
-  }
-
-  return null;
-}
 
 function validateCreateHabitForm(values: CreateHabitFormValues): CreateHabitFormErrors {
   const errors: CreateHabitFormErrors = {};
@@ -211,30 +121,6 @@ function hasErrors(errors: CreateHabitFormErrors): boolean {
   return Object.values(errors).some(Boolean);
 }
 
-async function uploadHabitImage(habitId: string, selectedImage: SelectedHabitImage): Promise<string> {
-  const upload = await createPhotoUploadUrl({
-    contentType: selectedImage.contentType,
-    fileExtension: selectedImage.fileExtension,
-    habitId,
-  });
-  const uploadedSizeBytes = await uploadPhotoBlob({
-    contentType: selectedImage.contentType,
-    uploadUrl: upload.uploadUrl,
-    uri: selectedImage.uri,
-  });
-  const sizeBytes = selectedImage.sizeBytes && selectedImage.sizeBytes > 0 ? selectedImage.sizeBytes : uploadedSizeBytes;
-
-  await createPhotoMetadata({
-    blobPath: upload.blobPath,
-    contentType: selectedImage.contentType,
-    habitId,
-    photoId: upload.photoId,
-    sizeBytes,
-  });
-
-  return upload.photoId;
-}
-
 export default function CreateHabitScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -250,7 +136,7 @@ export default function CreateHabitScreen() {
   const [habitReminderTime, setHabitReminderTime] = useState('');
   const [habitDaysOfWeek, setHabitDaysOfWeek] = useState<number[]>(allDays);
   const [habitColor, setHabitColor] = useState(colorOptions[0]);
-  const [habitIcon, setHabitIcon] = useState<IconName>('flag');
+  const [habitIcon, setHabitIcon] = useState<HabitIconName>('flag');
   const [selectedImage, setSelectedImage] = useState<SelectedHabitImage | null>(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Partial<Record<keyof CreateHabitFormValues, boolean>>>({});
@@ -347,7 +233,7 @@ export default function CreateHabitScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsEditing: true,
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: 'images',
       quality: 0.82,
     });
 
@@ -356,14 +242,14 @@ export default function CreateHabitScreen() {
     }
 
     const asset = result.assets[0];
-    const imageType = getImageType(asset);
+    const imageType = getHabitImageType(asset);
 
     if (!imageType) {
       setMessage('Selecciona una imagen JPG, PNG o WebP.');
       return;
     }
 
-    if (asset.fileSize && asset.fileSize > maxImageSizeBytes) {
+    if (asset.fileSize && asset.fileSize > maxHabitImageSizeBytes) {
       setMessage('La imagen no puede superar 10 MB.');
       return;
     }
@@ -624,7 +510,7 @@ export default function CreateHabitScreen() {
               <View style={styles.dayGrid}>
                 {dayOptions.map((dayOption) => (
                   <Pressable
-                    accessibilityLabel={dayOption.label}
+                    accessibilityLabel={dayOption.accessibilityLabel}
                     accessibilityRole="button"
                     accessibilityState={{ selected: habitDaysOfWeek.includes(dayOption.value) }}
                     key={dayOption.value}

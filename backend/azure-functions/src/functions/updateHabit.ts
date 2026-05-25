@@ -1,11 +1,22 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import { AuthenticationError, requireUser } from "../lib/auth";
-import { habitsContainer, readItem } from "../lib/cosmos";
+import { habitsContainer, photosContainer, readItem } from "../lib/cosmos";
 import { badRequest, isOptions, noContent, notFound, ok, serverError, unauthorized } from "../lib/http";
-import type { HabitDocument } from "../lib/models";
+import type { HabitDocument, PhotoDocument } from "../lib/models";
 import { updateHabitSchema } from "../lib/schemas";
 
-const editableFields = ["name", "category", "frequency", "goal", "color", "icon", "isArchived"] as const;
+const editableFields = [
+  "name",
+  "category",
+  "subcategories",
+  "frequency",
+  "daysOfWeek",
+  "goal",
+  "color",
+  "icon",
+  "coverPhotoId",
+  "isArchived",
+] as const;
 
 export async function updateHabit(req: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   if (isOptions(req)) return noContent(req);
@@ -45,6 +56,14 @@ export async function updateHabit(req: HttpRequest, context: InvocationContext):
       updatedAt: new Date().toISOString(),
       syncVersion: existing.syncVersion + 1,
     };
+
+    if (parsed.data.coverPhotoId) {
+      const photo = await readItem<PhotoDocument>(photosContainer(), parsed.data.coverPhotoId, userId);
+
+      if (!photo || photo.isDeleted || photo.habitId !== habitId) {
+        return badRequest("Invalid coverPhotoId for habit");
+      }
+    }
 
     for (const field of editableFields) {
       if (Object.prototype.hasOwnProperty.call(parsed.data, field)) {
